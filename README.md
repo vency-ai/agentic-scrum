@@ -6,6 +6,8 @@ DSM is a production-grade microservices ecosystem where an intelligent AI agent 
 
 Built for engineers exploring **agentic orchestration**, **event-driven microservices**, **Kubernetes-native applications**, and **AI in the SDLC**.
 
+![Alt text for the SVG](docs/imgs/Readme_image0.png)
+
 ---
 
 ## The Problem DSM Solves
@@ -13,10 +15,6 @@ Built for engineers exploring **agentic orchestration**, **event-driven microser
 Most "AI project management" demos stop at generating tickets or chat interfaces. They don't actually *run* a sprint, make autonomous decisions, or learn from outcomes.
 
 **DSM goes further:** It simulates a complete digital Scrum team with an AI that plans sprints, tracks daily progress, learns from retrospectives, and continuously improves its strategies. Because it's **API-driven by design**, DSM can easily integrate with real project management tools like **JIRA, Asana, Trello, and Monday.com**—calling their APIs to orchestrate projects and provide intelligent insights on live data.
-
----
-
-## Why DSM Is Different
 
 **🤖 True Agentic Intelligence**  
 Not just LLM wrappers—DSM's orchestrator uses episodic memory (pgvector), a strategy knowledge base, and continuous learning loops to make informed decisions and improve over time.
@@ -33,20 +31,6 @@ Database-per-service, circuit breakers, structured logging, observability guidan
 **🔌 Integration-Ready Design**  
 RESTful APIs for every service mean DSM can connect to external systems—fetch real project data from JIRA, sync backlogs with Asana, or export insights to Monday.com.
 
----
-
-## Why Kubernetes Matters for DSM
-
-Kubernetes isn't just a deployment platform—it's integral to DSM's architecture:
-
-- **High Availability:** Multi-replica services with Pod Disruption Budgets ensure critical components (Sprint Service) stay operational during updates
-- **Resource Isolation:** Explicit CPU/memory limits prevent resource contention between AI workloads (Ollama) and core services
-- **Self-Healing:** Liveness and readiness probes automatically restart unhealthy pods and stop routing traffic to degraded services
-- **Scalability:** Stateless services can horizontally scale based on load; StatefulSets provide stable identities for databases
-- **Service Discovery:** Built-in DNS enables seamless service-to-service communication without hardcoded IPs
-- **Declarative Infrastructure:** GitOps-ready manifests make the entire system reproducible and versionable
-
-This makes DSM a realistic example of cloud-native AI orchestration, not just a Docker Compose experiment.
 
 ---
 
@@ -83,34 +67,9 @@ This makes DSM a realistic example of cloud-native AI orchestration, not just a 
 
 ## Architecture at a Glance
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    Kubernetes Cluster (dsm)                  │
-├─────────────────────────────────────────────────────────────┤
-│                                                               │
-│  ┌──────────────┐      ┌─────────────────────────────────┐  │
-│  │ AI Agent     │─────▶│  Digital Scrum Team Services    │  │
-│  │ Orchestrator │      │  • Project  • Backlog  • Sprint │  │
-│  │              │      │  • Chronicle • Embedding        │  │
-│  └──────────────┘      └─────────────────────────────────┘  │
-│         │                          │                         │
-│         ▼                          ▼                         │
-│  ┌──────────────┐      ┌─────────────────────────────────┐  │
-│  │ Agent Brain  │      │     Event Bus (Redis Streams)   │  │
-│  │ • Episodes   │      │  • SprintStarted                │  │
-│  │ • Strategies │      │  • TASK_UPDATED                 │  │
-│  │ • Performance│      └─────────────────────────────────┘  │
-│  └──────────────┘                                            │
-│         │                                                    │
-│         ▼                                                    │
-│  ┌──────────────────────────────────────────────────────┐   │
-│  │  PostgreSQL Databases (Database-per-Service)         │   │
-│  │  • project-db  • backlog-db  • sprint-db             │   │
-│  │  • chronicle-db  • agent-db (with pgvector)          │   │
-│  └──────────────────────────────────────────────────────┘   │
-│                                                               │
-└─────────────────────────────────────────────────────────────┘
-```
+![Alt text for the SVG](docs/imgs/Readme_image3.png)
+
+
 
 ---
 
@@ -248,7 +207,20 @@ asana_api.create_task(
 DSM's API-first design means you can plug it into any workflow.
 
 ---
+---
 
+##  Kubernetes Role in DSM
+
+Kubernetes isn't just a deployment platform—it's integral to DSM's architecture:
+
+- **High Availability:** Multi-replica services with Pod Disruption Budgets ensure critical components (Sprint Service) stay operational during updates
+- **Resource Isolation:** Explicit CPU/memory limits prevent resource contention between AI workloads (Ollama) and core services
+- **Self-Healing:** Liveness and readiness probes automatically restart unhealthy pods and stop routing traffic to degraded services
+- **Scalability:** Stateless services can horizontally scale based on load; StatefulSets provide stable identities for databases
+- **Service Discovery:** Built-in DNS enables seamless service-to-service communication without hardcoded IPs
+- **Declarative Infrastructure:** GitOps-ready manifests make the entire system reproducible and versionable 
+>This makes DSM a realistic example of cloud-native AI orchestration, not just a Docker Compose experiment.
+---
 ## Status and Roadmap
 
 ### ✅ Current Capabilities (v2.0)
@@ -259,11 +231,11 @@ DSM's API-first design means you can plug it into any workflow.
 - Comprehensive health checks and structured logging
 - Multi-replica services with Pod Disruption Budgets
 
-### 🚀 Roadmap (2025)
-- **Q1:** Move to event-first architecture (command/event pattern, saga orchestration)
-- **Q2:** Multi-agent personas (separate AI roles for PO/SM/Dev)
-- **Q3:** API Gateway with authentication and rate limiting
-- **Q4:** Advanced observability (distributed tracing, custom dashboards)
+### 🚀 Roadmap 
+- Move to event-first architecture (command/event pattern, saga orchestration)
+-  Multi-agent personas (separate AI roles for PO/SM/Dev)
+-  API Gateway with authentication and rate limiting
+-  Advanced observability (distributed tracing, custom dashboards)
 
 See the [**Project Roadmap**](docs/ROADMAP.md) for detailed plans.
 
@@ -335,7 +307,7 @@ You're free to use, modify, and distribute DSM for personal, educational, or com
 - **GitHub Repository:** [github.com/vency-ai/agentic-scrum](https://github.com/vency-ai/agentic-scrum)
 - **Documentation:** [docs/DSM_Architecture_Overview.md](docs/DSM_Architecture_Overview.md)
 - **Project Roadmap:** [docs/ROADMAP.md](docs/ROADMAP.md)
-- **Author:** Vency AI Team
+- **Author:** Vency Varghese
 
 **Questions or feedback?** Open an issue or start a discussion on GitHub.
 
