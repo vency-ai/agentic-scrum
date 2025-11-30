@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: project-db
+  namespace: dsm
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: project-db
+  template:
+    metadata:
+      labels:
+        app: project-db
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:13
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5432
+          resources:
+            requests:
+              memory: "500Mi"
+              cpu: "300m"
+            limits:
+              memory: "1Gi"
+              cpu: "600m"
+          envFrom:
+            - secretRef:
+                name: project-db-secret
+            - configMapRef:
+                name: project-db-config
+          env:
+            - name: PGHBAFILE
+              value: /etc/postgresql/pg_hba.conf
+          volumeMounts:
+            - name: postgres-storage
+              mountPath: /var/lib/postgresql/data
+            - name: pg-hba-config
+              mountPath: /etc/postgresql/pg_hba.conf
+              subPath: pg_hba.conf
+      volumes:
+        - name: postgres-storage
+          persistentVolumeClaim:
+            claimName: project-db-pvc
+        - name: pg-hba-config
+          configMap:
+            name: project-db-pg-hba-config

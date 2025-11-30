@@ -1,0 +1,6 @@
+fastapi
+uvicorn
+psycopg2-binary
+structlog
+httpx==0.23.0
+redis

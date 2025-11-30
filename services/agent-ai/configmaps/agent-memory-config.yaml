@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: agent-memory-config
+  namespace: dsm
+data:
+  enable_async_learning: "false"
+  enable_strategy_evolution: "false"
+  enable_cross_project_learning: "false"
+  enable_episodic_memory: "true"
+  enable_working_memory: "true"
+  enable_knowledge_store: "true"

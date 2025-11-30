@@ -1,0 +1,15 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: pgbouncer-connection-test
+  namespace: dsm
+spec:
+  template:
+    spec:
+      containers:
+      - name: psql-client
+        image: bitnami/postgresql-client
+        command: ["bash", "-c"]
+        args: ["PGPASSWORD=dsm_password psql -h pgbouncer-chronicle-svc.dsm.svc.cluster.local -p 6432 -U chronicle_user -d agent_memory -c 'SELECT 1;'"]
+      restartPolicy: Never
+  backoffLimit: 4

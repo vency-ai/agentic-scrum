@@ -1,0 +1,29 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: backup-job
+  namespace: dsm
+spec:
+  template:
+    spec:
+      containers:
+      - name: backup
+        image: postgres:13
+        command: ["/bin/sh", "-c"]
+        args:
+        - "pg_dump --host=chronicle-db --username=chronicle_user --dbname=chronicle_db --file=/backup/dump.sql --format=p --clean --if-exists"
+        env:
+        - name: PGPASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-chronicle-secret
+              key: POSTGRES_PASSWORD
+        volumeMounts:
+        - name: backup-storage
+          mountPath: /backup
+      volumes:
+      - name: backup-storage
+        persistentVolumeClaim:
+          claimName: backup-pvc
+      restartPolicy: Never
+  backoffLimit: 4

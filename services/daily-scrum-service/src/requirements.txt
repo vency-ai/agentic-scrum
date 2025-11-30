@@ -1,0 +1,6 @@
+fastapi
+uvicorn
+structlog
+redis
+pytest
+requests

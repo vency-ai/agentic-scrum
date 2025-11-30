@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-reg-connection.yml
+  namespace: dsm
+spec:
+  containers:
+  - name: test-container
+    image: myreg.agile-corp.org:5000/test:v1
+  imagePullSecrets:
+  - name: agile-corp-reg-secret

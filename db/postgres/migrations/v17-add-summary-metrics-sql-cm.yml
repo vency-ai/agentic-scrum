@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: v17-add-summary-metrics-sql-cm
+  namespace: dsm
+data:
+  V17__add_summary_metrics_to_chronicle_notes.sql: |
+    ALTER TABLE chronicle_notes ADD COLUMN summary_metrics JSONB;

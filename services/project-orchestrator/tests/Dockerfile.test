@@ -1,0 +1,19 @@
+FROM python:3.10-slim-buster
+
+WORKDIR /app
+
+# Install test dependencies
+RUN pip install --no-cache-dir pytest pytest-asyncio
+
+# Copy source code and requirements
+COPY src/ ./src/
+COPY src/requirements.txt ./
+
+# Install application dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Set Python path
+ENV PYTHONPATH=/app/src
+
+# Default command runs tests
+CMD ["python", "-m", "pytest", "/app/src/tests/unit/test_memory_bridge.py", "-v"]

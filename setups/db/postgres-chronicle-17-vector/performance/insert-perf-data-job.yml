@@ -1,0 +1,28 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: insert-perf-data-job
+  namespace: dsm
+spec:
+  template:
+    spec:
+      containers:
+      - name: insert-data
+        image: postgres:17.6-alpine # Use a PostgreSQL client image
+        command: ["/bin/sh", "-c"]
+        args:
+          - |
+            set -e
+            echo "Generating SQL insert statements..."
+            SQL_FILE="/tmp/insert_perf_data_individual.sql"
+            for i in $(seq 1 1000); do
+              echo "INSERT INTO agent_episodes (project_id, perception, reasoning, action, embedding, agent_version, decision_source) VALUES ('PERF-TEST-$i', '{\"test\": true}', '{\"test\": true}', '{\"test\": true}', ARRAY(SELECT random() FROM generate_series(1, 1536))::vector, '1.0.0', 'rule_based_only');" >> $SQL_FILE
+            done
+            echo "SQL file generated. Executing inserts..."
+            PGPASSWORD=dsm_password psql -h chronicle-db -U chronicle_user -d agent_memory -f $SQL_FILE
+            echo "Data insertion complete."
+        env:
+        - name: PGPASSWORD
+          value: dsm_password # Consider using a Kubernetes Secret for production
+      restartPolicy: OnFailure
+  backoffLimit: 4

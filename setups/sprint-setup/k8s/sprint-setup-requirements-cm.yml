@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sprint-setup-requirements-cm
+data:
+  requirements.txt: |
+    psycopg2-binary
+    structlog
+    httpx

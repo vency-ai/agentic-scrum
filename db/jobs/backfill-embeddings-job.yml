@@ -1,0 +1,74 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: backfill-embeddings-job
+  namespace: dsm
+spec:
+  template:
+    spec:
+      containers:
+      - name: backfiller
+        image: python:3.11-slim
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+          pip install psycopg2-binary requests
+          python <<'EOF'
+          import os
+          import json
+          import psycopg2
+          import requests
+
+          def get_db_connection():
+              return psycopg2.connect(
+                  host="chronicle-db.dsm.svc.cluster.local",
+                  dbname="agent_memory",
+                  user="chronicle_user",
+                  password="dsm_password"
+              )
+
+          def get_embedding(text):
+              response = requests.post(
+                  "http://ollama-server.dsm.svc.cluster.local:11434/api/embeddings",
+                  json={"model": "mxbai-embed-large:latest", "prompt": text}
+              )
+              response.raise_for_status()
+              return response.json()["embedding"]
+
+          def main():
+              print("Starting embedding backfill job using Ollama server...")
+              conn = get_db_connection()
+              cur = conn.cursor()
+
+              cur.execute("SELECT episode_id, reasoning FROM agent_episodes WHERE embedding_v2 IS NULL;")
+              rows = cur.fetchall()
+              
+              print(f"Found {len(rows)} episodes to backfill.")
+
+              for row in rows:
+                  episode_id, reasoning = row
+                  text_to_embed = str(reasoning)
+                  
+                  try:
+                      embedding = get_embedding(text_to_embed)
+                      
+                      cur.execute(
+                          "UPDATE agent_episodes SET embedding_v2 = %s WHERE episode_id = %s;",
+                          (embedding, episode_id)
+                      )
+                      print(f"Successfully updated episode {episode_id}")
+                  except requests.exceptions.RequestException as e:
+                      print(f"Error getting embedding for episode {episode_id}: {e}")
+                      # Decide on error handling: skip, retry, or fail the job
+                      continue # Skipping for now
+              
+              conn.commit()
+              cur.close()
+              conn.close()
+              print("Backfill job completed successfully.")
+
+          if __name__ == "__main__":
+              main()
+          EOF
+      restartPolicy: Never
+  backoffLimit: 4

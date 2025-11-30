@@ -1,0 +1,78 @@
+DROP TABLE IF EXISTS projects CASCADE;
+DROP TABLE IF EXISTS teams CASCADE;
+DROP TABLE IF EXISTS designations CASCADE;
+DROP TABLE IF EXISTS roles CASCADE;
+DROP TABLE IF EXISTS project_team_mapping CASCADE;
+DROP TABLE IF EXISTS team_designation_mapping CASCADE;
+DROP TABLE IF EXISTS team_role_mapping CASCADE;
+DROP TABLE IF EXISTS role_designation_mapping CASCADE;
+DROP TABLE IF EXISTS pto_calendar CASCADE;
+DROP TABLE IF EXISTS us_holidays CASCADE;
+
+CREATE TABLE projects (
+    prjid VARCHAR(255) PRIMARY KEY,
+    projectname VARCHAR(255) NOT NULL,
+    codename VARCHAR(255) NOT NULL,
+    status VARCHAR(255) DEFAULT 'inactive'
+);
+
+CREATE TABLE teams (
+    id VARCHAR(255) PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    gender VARCHAR(10),
+    state VARCHAR(50),
+    age INTEGER,
+    project_assign VARCHAR(255),
+    active BOOLEAN
+);
+
+CREATE TABLE designations (
+    id VARCHAR(255) PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    experience VARCHAR(50),
+    years INTEGER
+);
+
+CREATE TABLE roles (
+    id VARCHAR(255) PRIMARY KEY,
+    role VARCHAR(255) NOT NULL
+);
+
+CREATE TABLE project_team_mapping (
+    project_id VARCHAR(255) NOT NULL,
+    employee_id VARCHAR(255) NOT NULL,
+    PRIMARY KEY (project_id, employee_id)
+);
+
+CREATE TABLE team_designation_mapping (
+    id VARCHAR(255) PRIMARY KEY,
+    did VARCHAR(255) NOT NULL,
+    eid VARCHAR(255) NOT NULL
+);
+
+CREATE TABLE team_role_mapping (
+    id VARCHAR(255) PRIMARY KEY,
+    rid VARCHAR(255) NOT NULL,
+    eid VARCHAR(255) NOT NULL
+);
+
+CREATE TABLE role_designation_mapping (
+    id VARCHAR(255) PRIMARY KEY,
+    roleid VARCHAR(255) NOT NULL,
+    did VARCHAR(255) NOT NULL
+);
+
+CREATE TABLE pto_calendar (
+    pto_id VARCHAR(255) PRIMARY KEY,
+    employee_id VARCHAR(255) NOT NULL,
+    start_date TIMESTAMP NOT NULL,
+    end_date TIMESTAMP NOT NULL,
+    reason TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE us_holidays (
+    holiday_date DATE PRIMARY KEY,
+    holiday_name VARCHAR(255) NOT NULL,
+    type VARCHAR(50)
+);

@@ -1,0 +1,289 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-agent-memory
+  namespace: dsm
+  labels:
+    grafana_dashboard: "1"
+data:
+  agent-memory-dashboard.json: |-
+    {
+      "annotations": {
+        "list": [
+          {
+            "builtIn": 1,
+            "datasource": "-- Grafana --",
+            "enable": true,
+            "hide": true,
+            "iconColor": "rgba(0, 211, 255, 1)",
+            "name": "Annotations & Alerts",
+            "type": "dashboard"
+          }
+        ]
+      },
+      "editable": true,
+      "gnetId": null,
+      "graphTooltip": 1,
+      "id": null,
+      "links": [],
+      "panels": [
+        {
+          "datasource": null,
+          "fieldConfig": {
+            "defaults": {
+              "custom": {},
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 0
+          },
+          "id": 2,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "limit": 80,
+              "noRems": false,
+              "values": false
+            },
+            "textMode": "auto"
+          },
+          "plugin_version": "7.3.7",
+          "targets": [
+            {
+              "expr": "agent_memory_db_pool_size",
+              "interval": "",
+              "legendFormat": "DB Pool Size",
+              "refId": "A"
+            },
+            {
+              "expr": "agent_memory_db_pool_checked_in_connections",
+              "interval": "",
+              "legendFormat": "DB Checked In",
+              "refId": "B"
+            },
+            {
+              "expr": "agent_memory_db_pool_checked_out_connections",
+              "interval": "",
+              "legendFormat": "DB Checked Out",
+              "refId": "C"
+            }
+          ],
+          "title": "Agent Memory DB Connection Pool",
+          "type": "stat"
+        },
+        {
+          "datasource": null,
+          "fieldConfig": {
+            "defaults": {
+              "custom": {},
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 5000
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 0
+          },
+          "id": 4,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "limit": 80,
+              "noRems": false,
+              "values": false
+            },
+            "textMode": "auto"
+          },
+          "plugin_version": "7.3.7",
+          "targets": [
+            {
+              "expr": "embedding_generation_latency_seconds",
+              "interval": "",
+              "legendFormat": "Embedding Latency",
+              "refId": "A"
+            }
+          ],
+          "title": "Embedding Service Latency",
+          "type": "stat"
+        },
+        {
+          "datasource": null,
+          "fieldConfig": {
+            "defaults": {
+              "custom": {},
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 1
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 8
+          },
+          "id": 6,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "limit": 80,
+              "noRems": false,
+              "values": false
+            },
+            "textMode": "auto"
+          },
+          "plugin_version": "7.3.7",
+          "targets": [
+            {
+              "expr": "embedding_generation_failures_total",
+              "interval": "",
+              "legendFormat": "Embedding Failures",
+              "refId": "A"
+            }
+          ],
+          "title": "Embedding Service Failures",
+          "type": "stat"
+        },
+        {
+          "datasource": null,
+          "fieldConfig": {
+            "defaults": {
+              "custom": {},
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 0.5
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 8
+          },
+          "id": 8,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "limit": 80,
+              "noRems": false,
+              "values": false
+            },
+            "textMode": "auto"
+          },
+          "plugin_version": "7.3.7",
+          "targets": [
+            {
+              "expr": "embedding_service_circuit_breaker_state",
+              "interval": "",
+              "legendFormat": "Circuit Breaker State",
+              "refId": "A"
+            }
+          ],
+          "title": "Embedding Service Circuit Breaker State",
+          "type": "stat"
+        }
+      ],
+      "schemaVersion": 27,
+      "style": "dark",
+      "tags": [
+        "agent-memory",
+        "orchestrator"
+      ],
+      "templating": {
+        "list": []
+      },
+      "time": {
+        "from": "now-6h",
+        "to": "now"
+      },
+      "timepicker": {},
+      "timezone": "",
+      "title": "Agent Memory Infrastructure",
+      "uid": "agent-memory-infra",
+      "version": 1
+    }

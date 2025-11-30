@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: chronicle-service-test-pod
+  namespace: dsm
+spec:
+  restartPolicy: Never
+  containers:
+  - name: test-runner
+    image: python:3.9-slim-buster
+    command: ["/bin/bash", "-c"]
+    args:
+      - "pip install pytest httpx psycopg2-binary && \
+         cd /app/chronicle-service && \
+         python3 -m pytest tests/test_app.py"
+    volumeMounts:
+    - name: chronicle-service-code
+      mountPath: /app/chronicle-service
+  volumes:
+  - name: chronicle-service-code
+    hostPath:
+      path: /home/sysadmin/sysadmin/k8s/prj-sdlc/projects/chronicle-service
+      type: Directory

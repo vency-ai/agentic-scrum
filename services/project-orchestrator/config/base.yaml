@@ -1,0 +1,49 @@
+orchestration:
+  max_tasks_per_sprint: 10
+  default_sprint_weeks: 2
+  schedule: "0 14 * * 1-5"
+intelligence:
+  enable_historical_analysis: true
+  enable_predictive_scoring: true
+  enable_pattern_recognition: true
+  similarity_threshold: 0.7
+  cache_ttl_minutes: 30 # Updated from 60 to 30 as per CR
+  pattern_cache_ttl_minutes: 30 # Added for pattern analysis caching
+  min_data_points_for_analysis: 5
+  min_velocity_confidence_for_scoring: 0.5 # New: Minimum velocity confidence for it to contribute to overall pattern confidence
+  confidence_threshold: 0.6
+  chronicle_timeout_seconds: 10
+  fallback_to_rules_on_failure: true
+  decision_enhancement:
+    mode: "intelligence_enhanced" # options: rule_based_only, intelligence_enhanced, hybrid
+    confidence_threshold: 0.50
+    max_adjustment_percent: 0.5
+    enable_task_adjustments: true
+    enable_duration_adjustments: true
+    enable_resource_allocation_adjustment: false
+    min_similar_projects: 3 # For task count adjustments
+    task_adjustment_difference_threshold: 1 # New: Minimum task difference to trigger an intelligence adjustment
+    min_similarity_for_adjustment_proposal: 0.5 # New: Minimum similarity score for a project to be considered for adjustment proposal
+    min_confidence_for_task_proposal: 0.5 # New: Minimum average confidence to propose a task adjustment
+    track_outcomes: true
+  feature_flags:
+    enable_async_learning: false
+    enable_strategy_evolution: false
+    enable_cross_project_learning: false
+    enable_episodic_memory: true
+    enable_working_memory: true
+    enable_knowledge_store: true
+  ai_agent_advisor:
+    enable_ai_advisor: false # Start disabled for safe rollout
+    ollama_service_url: "http://ollama-server.dsm.svc.cluster.local:11434"
+    ollama_model: "llama3.2:latest"
+    ollama_timeout: 5.0 # seconds
+external_services:
+  project_service_url: "http://project-service.dsm.svc.cluster.local"
+  backlog_service_url: "http://backlog-service.dsm.svc.cluster.local"
+  sprint_service_url: "http://sprint-service.dsm.svc.cluster.local"
+  chronicle_service_url: "http://chronicle-service.dsm.svc.cluster.local"
+  agent_memory_db_connection_string: "postgresql://chronicle_user:dsm_password@chronicle-db.dsm.svc.cluster.local:5432/agent_memory"
+  agent_memory_db_min_connections: 2
+  agent_memory_db_max_connections: 10
+  embedding_service_url: "http://embedding-service.dsm.svc.cluster.local"

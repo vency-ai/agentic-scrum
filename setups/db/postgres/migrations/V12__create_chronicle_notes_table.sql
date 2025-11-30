@@ -1,0 +1,13 @@
+CREATE TABLE chronicle_notes (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    event_type VARCHAR(255) NOT NULL, -- e.g., 'sprint_retrospective', 'daily_scrum_report'
+    project_id VARCHAR(255),
+    sprint_id VARCHAR(255),
+    note_content TEXT, -- For retrospective reports
+    report_date DATE, -- For daily scrum reports
+    employee_id VARCHAR(255), -- For daily scrum reports
+    yesterday_work TEXT, -- For daily scrum reports
+    today_work TEXT, -- For daily scrum reports
+    impediments TEXT, -- For daily scrum reports
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

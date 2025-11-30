@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-chronicle-config
+  namespace: dsm
+data:
+  POSTGRES_DB: chronicle_db
+  POSTGRES_USER: chronicle_user
+  POSTGRES_HOST: chronicle-db

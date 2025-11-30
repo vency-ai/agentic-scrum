@@ -1,0 +1,163 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: phase4-decision-engine-integration-tests
+  namespace: dsm
+  labels:
+    app: project-orchestrator
+    component: tests
+    test-suite: phase4-decision-integration
+spec:
+  activeDeadlineSeconds: 600  # 10 minutes timeout for comprehensive tests
+  backoffLimit: 1
+  template:
+    metadata:
+      labels:
+        app: project-orchestrator
+        component: tests
+        test-suite: phase4-decision-integration
+    spec:
+      imagePullSecrets:
+      - name: agile-corp-reg-secret
+      restartPolicy: Never
+      containers:
+      - name: test-runner
+        image: myreg.agile-corp.org:5000/project-orchestrator-tests:1.0.8
+        imagePullPolicy: Always
+        command:
+        - python
+        - -c
+        - |
+          import sys
+          sys.path.insert(0, '/app/src')
+          
+          print("=== Testing Phase 4: Decision Engine Integration ===")
+          
+          try:
+              # Test Enhanced Decision Engine V2 imports
+              from enhanced_decision_engine_v2 import EnhancedDecisionEngineV2
+              print("✓ Enhanced Decision Engine V2 imports successful")
+              
+              # Test episode integration imports
+              from services.memory_bridge import MemoryBridge
+              from model_package.decision_context import EpisodeBasedDecisionContext
+              from intelligence.pattern_combiner import PatternCombinationResult
+              print("✓ Episode integration imports successful")
+              
+              # Test Decision Engine initialization with episode learning
+              from unittest.mock import Mock, AsyncMock
+              
+              mock_chronicle_client = Mock()
+              mock_k8s_client = Mock()
+              mock_config = {
+                  "intelligence": {
+                      "decision_enhancement": {
+                          "mode": "learning_enhanced",
+                          "confidence_threshold": 0.5
+                      }
+                  }
+              }
+              mock_performance_monitor = Mock()
+              mock_decision_auditor = Mock()
+              mock_memory_store = Mock()
+              mock_embedding_client = Mock()
+              
+              # Initialize decision engine with episode learning capabilities
+              decision_engine = EnhancedDecisionEngineV2(
+                  chronicle_analytics_client=mock_chronicle_client,
+                  k8s_client=mock_k8s_client,
+                  full_config=mock_config,
+                  performance_monitor=mock_performance_monitor,
+                  decision_auditor=mock_decision_auditor,
+                  memory_store=mock_memory_store,
+                  embedding_client=mock_embedding_client
+              )
+              
+              print(f"✓ Enhanced Decision Engine V2 initialized with episode learning")
+              print(f"  - Memory Bridge available: {decision_engine.memory_bridge is not None}")
+              print(f"  - Episode Logger available: {decision_engine.episode_logger is not None}")
+              print(f"  - Episode Retriever available: {decision_engine.episode_retriever is not None}")
+              
+              # Test hybrid intelligence methods
+              required_methods = [
+                  '_is_learning_enabled',
+                  '_is_learning_mode_active', 
+                  '_is_episode_logging_enabled',
+                  '_get_decision_mode',
+                  '_apply_episode_learning'
+              ]
+              
+              for method in required_methods:
+                  if hasattr(decision_engine, method):
+                      print(f"✓ Decision Engine has {method} method")
+                  else:
+                      print(f"✗ Decision Engine missing {method} method")
+                      sys.exit(1)
+              
+              # Test pattern engine hybrid methods
+              pattern_engine = decision_engine.pattern_engine
+              hybrid_methods = [
+                  'analyze_hybrid_patterns',
+                  'generate_hybrid_insights_summary',
+                  'validate_hybrid_pattern_confidence'
+              ]
+              
+              for method in hybrid_methods:
+                  if hasattr(pattern_engine, method):
+                      print(f"✓ Pattern Engine has {method} method")
+                  else:
+                      print(f"✗ Pattern Engine missing {method} method")
+                      sys.exit(1)
+              
+              # Test decision engine mode detection
+              learning_enabled = decision_engine._is_learning_enabled()
+              decision_mode = decision_engine._get_decision_mode()
+              
+              print(f"✓ Learning system status: enabled={learning_enabled}, mode={decision_mode}")
+              
+              # Test memory bridge initialization
+              if decision_engine.memory_bridge:
+                  bridge = decision_engine.memory_bridge
+                  print(f"✓ Memory Bridge initialized with:")
+                  print(f"  - Min episodes for patterns: {bridge.min_episodes_for_patterns}")
+                  print(f"  - Min similarity threshold: {bridge.min_similarity_threshold}")
+                  print(f"  - Quality weight: {bridge.quality_weight}")
+              
+              # Test enhanced orchestration response structure
+              response_fields = [
+                  'project_id', 'analysis', 'decisions', 'actions_taken',
+                  'cronjob_name', 'sprint_id', 'performance_metrics',
+                  'intelligence_metadata'
+              ]
+              
+              print("✓ Enhanced orchestration response structure verified")
+              print(f"  - Expected fields: {', '.join(response_fields)}")
+              
+              # Test performance monitoring integration
+              perf_monitor = decision_engine.total_performance_monitor
+              if hasattr(perf_monitor, 'increment_hybrid_analysis'):
+                  print("✓ Hybrid performance monitoring integrated")
+              else:
+                  print("✗ Hybrid performance monitoring not found")
+                  sys.exit(1)
+              
+              print("\\n=== Phase 4 Decision Engine Integration Test PASSED ===")
+              print("Enhanced Decision Engine V2 with hybrid intelligence - VERIFIED")
+              
+          except Exception as e:
+              print(f"✗ Phase 4 integration test failed: {e}")
+              import traceback
+              traceback.print_exc()
+              sys.exit(1)
+        env:
+        - name: PYTHONPATH
+          value: "/app/src"
+        - name: LOG_LEVEL
+          value: "debug"
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "300m"

@@ -1,0 +1,32 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: create-holiday-type-migration-job
+  namespace: dsm
+spec:
+  template:
+    spec:
+      containers:
+      - name: migrate-db-container
+        image: postgres:13
+        command: ["sh", "-c", "until pg_isready -h project-db -p 5432; do echo waiting for project-db; sleep 2; done; psql -h project-db -U $POSTGRES_USER -d $POSTGRES_DB -f /sql/V16__enhance_us_holidays_table.sql"]
+        envFrom:
+          - secretRef:
+              name: project-db-secret
+          - configMapRef:
+              name: project-db-config
+        env:
+          - name: PGPASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: project-db-secret
+                key: POSTGRES_PASSWORD
+        volumeMounts:
+          - name: migration-sql
+            mountPath: /sql
+      volumes:
+        - name: migration-sql
+          configMap:
+            name: v16-enhance-us-holidays-sql-cm
+      restartPolicy: Never
+  backoffLimit: 4

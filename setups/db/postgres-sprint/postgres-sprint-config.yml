@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sprint-db-config
+  namespace: dsm
+data:
+  POSTGRES_DB: sprint_db
+  POSTGRES_USER: dsm_user
+  POSTGRES_HOST: sprint-db

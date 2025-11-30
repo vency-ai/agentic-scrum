@@ -1,0 +1,12 @@
+apiVersion: v1
+data:
+  dailyscrum-config.json: |
+    {
+        "endpoint": "http://dailyscrum",
+        "route": "/run_daily_scrum"
+    }
+kind: ConfigMap
+metadata:
+  creationTimestamp: null
+  name: dailyscrum-config
+  namespace: dsm

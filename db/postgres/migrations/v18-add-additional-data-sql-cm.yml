@@ -1,0 +1,46 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: v18-add-additional-data-sql
+  namespace: dsm
+data:
+  v18_add_additional_data_to_chronicle_notes.sql: |
+    ALTER TABLE chronicle_notes ADD COLUMN additional_data JSONB;
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: v18-add-additional-data-job
+  namespace: dsm
+spec:
+  template:
+    spec:
+      containers:
+      - name: postgres-migrator
+        image: postgres:13
+        command:
+        - "/bin/sh"
+        - "-c"
+        - |
+          PGPASSWORD=$DB_PASSWORD psql -h $DB_HOST -U $DB_USER -d $DB_NAME -f /migrations/v18_add_additional_data_to_chronicle_notes.sql
+        env:
+        - name: DB_HOST
+          value: "chronicle-db"
+        - name: DB_NAME
+          value: "chronicle_db"
+        - name: DB_USER
+          value: "chronicle_user"
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-chronicle-secret
+              key: POSTGRES_PASSWORD
+        volumeMounts:
+        - name: migration-sql
+          mountPath: /migrations
+      volumes:
+      - name: migration-sql
+        configMap:
+          name: v18-add-additional-data-sql
+      restartPolicy: Never
+  backoffLimit: 4

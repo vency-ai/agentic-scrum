@@ -1,0 +1,134 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  creationTimestamp: null
+  name: run-dailyscrum-aeg003
+  namespace: dsm
+  labels:
+    cronjob: run-dailyscrum-aeg003
+    team: scrum
+spec:
+#  schedule: "*/2 * * * *"
+#  schedule: "0 8 * * 1-5"           # Run at 8:00 AM, Monday to Friday
+#  schedule: 0 */4 * * *             # run 3 hours  
+
+  schedule: "0 12 * * 1-5"          # Run at 2:00 PM UTC, equivalent to 8:00 AM CST/CDT
+
+#  timezone: "America/Chicago"       # Central Standard Time (CST) timezone
+  successfulJobsHistoryLimit: 3     # Keep the last 3 successful job runs
+  failedJobsHistoryLimit: 3         # Keep the last 3 failed job runs
+#  ttlSecondsAfterFinished: 300      # Optional: Clean up completed jobs after 300 seconds (5 minutes)
+
+  jobTemplate:
+    spec:
+      backoffLimit: 4           # Retry up to 4 times on failure
+      template:
+        metadata:
+          labels:
+            app: dailyscrum-run
+            env: production
+            cronjob: run-dailyscrum-aeg003  # This is the label for pods
+        spec:
+          containers:
+          - image: python:3.10
+            name: run-dailyscrum-aeg003
+            command: ["/bin/sh", "-c", "apt-get update -y; apt-get install -y tree jq; pip3 install pandas Flask requests; tree /app; env; python3 /app/run_dailyscrum.py"]
+            #do a pre check
+            #command: ["/bin/sh", "-c", "until wget -q --spider http://dailyscrum/health; do echo 'Waiting for dependency...'; sleep 5; done; echo 'Starting job';apt-get update -y; apt-get install -y tree; pip3 install pandas Flask requests; tree /app; env; python3 /app/run_dailyscrum.py"]
+            command: 
+              - "/bin/sh" 
+              - "-c" 
+              - |-
+                  set -e
+
+                  #apt-get update -y
+                  #apt-get install -y curl # Explicitly install curl
+
+                  until curl -s -f curl http://sprint-service.dsm.svc.cluster.local/health; do
+                    echo 'Waiting for dependency...'
+                    sleep 5
+                  done
+                  echo 'Starting job'
+
+                  # Install required packages
+
+                  # Update and install jq and tree with retry on failure
+                  rm -rf /var/lib/apt/lists/*
+                  apt-get clean
+                  apt-get update -y
+
+                  until apt-get install -y --fix-missing jq tree; do
+                    echo "Retrying package installation..."
+                    sleep 5
+                  done
+
+
+
+                  ###
+                  # Fetch active sprint
+                  HTTP_STATUS=$(curl -s -o /tmp/sprint_response.json -w "%{http_code}" "http://sprint-service.dsm.svc.cluster.local/sprints/active/${PROJECT_ID}")
+                  echo "HTTP Status: $HTTP_STATUS"
+                  echo "Content of /tmp/sprint_response.json:"
+                  cat /tmp/sprint_response.json
+
+                  SPRINT_ID=""
+                  if [ "$HTTP_STATUS" -eq 200 ]; then
+                    SPRINT_ID=$(jq -r '.sprint_id' /tmp/sprint_response.json)
+                  fi
+                  echo "Extracted SPRINT_ID (after jq): $SPRINT_ID"
+                  if [ -z "$SPRINT_ID" ]; then
+                    echo "SPRINT_ID is empty. Exiting."
+                    exit 1
+                  fi
+                  export SPRINT_ID  # ← This makes it available to python and subprocesses
+                  echo "SPRINT_ID successfully extracted: $SPRINT_ID"
+                  echo "Environment before running Python:"
+                  env | grep -E 'SPRINT_ID|PROJECT_ID'
+
+                  ###
+
+
+                  echo "--- Triggering Daily Scrum Simulation ---"
+                  curl -X POST "http://sprint-service.dsm.svc.cluster.local/sprints/${SPRINT_ID}/run-daily-scrum"
+                  #                  curl -s -X POST  http://sprint-service/sprints/AEG003-S03/run-daily-scrum 
+                  echo "--- Simulation Triggered Successfully ---"
+
+                  echo "--- Starting Daily Scrum Reporting ---"
+                  # Update and install packages
+                  apt-get update -y
+                  apt-get install -y tree
+
+                  # Install Python packages
+                  pip3 install pandas Flask requests
+                  # Display directory structure
+                  tree /app
+
+                  # Display environment variables
+                  env
+                  # Start the Python script
+                  python3 /app/run_dailyscrum.py
+                  echo "--- Reporting Job Finished ---"
+
+            volumeMounts:
+ #           - name: persist-data-volume
+ #             mountPath: /app/data
+ #           - name: persist-project-volume
+ #             mountPath: /app/projects
+            - name: projects-code-volume
+              mountPath: /app/run_dailyscrum.py
+              subPath: run_dailyscrum.py
+            env:
+            - name: PROJECT_ID
+              value: "AEG003"
+#            - name: SPRINT_ID
+#              value: "AEG003-S03"
+
+          dnsPolicy: ClusterFirst
+          restartPolicy: Never
+          volumes:
+            - name: cache-volume
+              emptyDir:
+                sizeLimit: 500Mi
+            - name: projects-code-volume
+              configMap:
+                name: run-dailyscrum

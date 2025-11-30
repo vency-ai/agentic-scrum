@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: embedding-service
+  namespace: dsm
+  labels:
+    app: embedding-service
+    version: "1.0.0"
+spec:
+  replicas: 4
+  selector:
+    matchLabels:
+      app: embedding-service
+  template:
+    metadata:
+      labels:
+        app: embedding-service
+    spec:
+      containers:
+      - name: embedding-service
+        image: myreg.agile-corp.org:5000/embedding-service:1.0.0
+        ports:
+        - containerPort: 8000
+          name: http
+        env:
+        - name: OLLAMA_BASE_URL
+          value: "http://ollama-server.dsm.svc.cluster.local:11434"
+        - name: OLLAMA_MODEL
+          value: "mxbai-embed-large:latest"
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 15
+          periodSeconds: 30
+          timeoutSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 5
+      imagePullSecrets:
+        - name: agile-corp-reg-secret

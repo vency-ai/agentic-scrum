@@ -1,0 +1,68 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: setup-backlog
+  namespace: dsm
+  labels:
+    env: dev
+    app: backlog
+spec:
+  template:
+    metadata:
+      labels:
+        env: dev
+        app: backlog
+    spec:
+      containers:
+      - name: setup-backlog
+        image: python:3.10
+        command: ["/bin/sh", "-c", "pip3 install -r /app/requirements.txt; python3 /app/app.py"]
+        env:
+        - name: POSTGRES_HOST
+          value: "backlog-db"
+        - name: POSTGRES_PORT
+          value: "5432"
+        - name: POSTGRES_USER
+          valueFrom:
+            configMapKeyRef:
+              name: backlog-db-config
+              key: POSTGRES_USER
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: backlog-db-secret
+              key: POSTGRES_PASSWORD
+        - name: POSTGRES_DB
+          valueFrom:
+            configMapKeyRef:
+              name: backlog-db-config
+              key: POSTGRES_DB
+        - name: PROJECT_SERVICE_URL
+          value: "http://project-service.dsm.svc.cluster.local"
+        - name: PROJECT_ID
+          value: "TEST-001"
+        - name: SPRINT_ID
+          value: "SPRINT-001"
+        volumeMounts:
+        - name: setup-backlog-volume
+          mountPath: /app/app.py
+          subPath: app.py
+        - name: api-utils-volume
+          mountPath: /app/utils.py
+          subPath: utils.py
+        - name: setup-backlog-requirements-volume
+          mountPath: /app/requirements.txt
+          subPath: requirements.txt
+        resources: {}
+      restartPolicy: Never
+      dnsPolicy: ClusterFirst
+      volumes:
+      - name: setup-backlog-volume
+        configMap:
+          name: backlog-setup-scripts
+      - name: api-utils-volume
+        configMap:
+          name: backlog-setup-scripts
+      - name: setup-backlog-requirements-volume
+        configMap:
+          name: backlog-setup-scripts

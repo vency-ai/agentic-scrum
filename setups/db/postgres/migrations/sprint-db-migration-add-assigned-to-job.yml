@@ -1,0 +1,33 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: sprint-db-migration-add-assigned-to
+  namespace: dsm
+spec:
+  template:
+    spec:
+      containers:
+      - name: migration
+        image: postgres:13
+        command: ["bash", "-c"]
+        args: 
+          - |
+            PGPASSWORD="$(cat /etc/sprint-db-secret/POSTGRES_PASSWORD)" \
+            psql -h sprint-db -U dsm_user -d sprint_db -f /config/add_assigned_to_to_tasks_table.sql
+        envFrom:
+        - configMapRef:
+            name: sprint-db-config
+        volumeMounts:
+        - name: migration-script
+          mountPath: /config
+        - name: sprint-db-secret
+          mountPath: /etc/sprint-db-secret
+          readOnly: true
+      restartPolicy: OnFailure
+      volumes:
+      - name: migration-script
+        configMap:
+          name: sprint-db-migration-add-assigned-to-configmap
+      - name: sprint-db-secret
+        secret:
+          secretName: sprint-db-secret

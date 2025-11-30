@@ -1,0 +1,24 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: generate-sprint-report-manual-test
+  namespace: dsm
+spec:
+  template:
+    spec:
+      serviceAccountName: sprint-report-generator-sa
+      containers:
+      - name: sprint-report-generator
+        image: bitnami/kubectl:latest
+        command: ["/bin/sh", "-c"]
+        args: ["/scripts/generate_sprint_report.sh"]
+        volumeMounts:
+        - name: script-volume
+          mountPath: /scripts
+      volumes:
+      - name: script-volume
+        configMap:
+          name: generate-sprint-report-script
+          defaultMode: 0755
+      restartPolicy: OnFailure
+  backoffLimit: 0

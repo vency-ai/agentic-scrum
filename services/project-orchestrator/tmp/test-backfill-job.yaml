@@ -1,0 +1,72 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: test-embedding-backfill
+  namespace: dsm
+  labels:
+    app: project-orchestrator
+    component: embedding-backfill
+    job-type: test
+spec:
+  activeDeadlineSeconds: 300  # 5 minutes
+  backoffLimit: 1
+  template:
+    metadata:
+      labels:
+        app: project-orchestrator
+        component: embedding-backfill
+        job-type: test
+    spec:
+      imagePullSecrets:
+      - name: agile-corp-reg-secret
+      serviceAccountName: project-orchestrator-sa
+      restartPolicy: Never
+      containers:
+      - name: test-embedding-backfill
+        image: myreg.agile-corp.org:5000/project-orchestrator:1.0.60
+        imagePullPolicy: Always
+        command:
+        - python
+        - -m
+        - services.embedding_backfill_service
+        - "5"   # Max 5 episodes for test run
+        - "1"   # Batch size of 1
+        env:
+        - name: PYTHONPATH
+          value: "/app/src"
+        - name: LOG_LEVEL
+          value: "debug"
+        # Database connection
+        - name: AGENT_MEMORY_DB_HOST
+          value: "chronicle-db"
+        - name: AGENT_MEMORY_DB_PORT
+          value: "5432"
+        - name: AGENT_MEMORY_DB_NAME
+          value: "agent_memory"
+        - name: AGENT_MEMORY_DB_USER
+          value: "chronicle_user"
+        - name: AGENT_MEMORY_DB_PASSWORD
+          value: "dsm_password"
+        # Embedding service
+        - name: EMBEDDING_SERVICE_URL
+          value: "http://embedding-service.dsm.svc.cluster.local:8000"
+        - name: EMBEDDING_SERVICE_TIMEOUT
+          value: "30"
+        # Feature flags
+        - name: FEATURE_FLAG_ENABLE_ASYNC_LEARNING
+          valueFrom:
+            configMapKeyRef:
+              name: agent-memory-config
+              key: enable_async_learning
+        - name: FEATURE_FLAG_ENABLE_EPISODIC_MEMORY
+          valueFrom:
+            configMapKeyRef:
+              name: agent-memory-config
+              key: enable_episodic_memory
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"

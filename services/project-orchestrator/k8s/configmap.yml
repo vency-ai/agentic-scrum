@@ -1,0 +1,168 @@
+apiVersion: v1
+data:
+  run_dailyscrum.py: |
+    import os
+    import sys
+    import json
+    import requests
+    import logging
+    from datetime import datetime, timezone
+
+    # Configure logging
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(levelname)s - %(message)s',
+        stream=sys.stdout
+    )
+
+    # --- Environment Variables ---
+    PROJECT_ID = os.getenv("PROJECT_ID")
+    SPRINT_ID = os.getenv("SPRINT_ID")
+
+    # --- Service URLs ---
+    PROJECT_SERVICE_URL = os.getenv("PROJECT_SERVICE_URL", "http://project-service.dsm.svc.cluster.local")
+    SPRINT_SERVICE_URL = os.getenv("SPRINT_SERVICE_URL", "http://sprint-service.dsm.svc.cluster.local")
+    CHRONICLE_SERVICE_URL = os.getenv("CHRONICLE_SERVICE_URL", "http://chronicle-service.dsm.svc.cluster.local")
+
+    # --- Helper Functions ---
+
+    def make_request(url, method="GET", json_data=None, timeout=15):
+        """A wrapper for making HTTP requests with error handling."""
+        try:
+            logging.info(f"Making {method} request to {url}")
+            print(f"DEBUG: Actual URL being used by requests: {url}")
+            response = requests.request(method, url, json=json_data, timeout=timeout)
+            response.raise_for_status()
+
+            # For logging, show request body if it exists
+            if json_data:
+                logging.info(f"Request Body: {json.dumps(json_data)}")
+
+            # For logging, show response body if it exists
+            if response.text:
+                logging.info(f"Response Body: {response.text}")
+
+            if response.content and response.headers.get('content-type') == 'application/json':
+                return response.json()
+            return response.text  # Return text if not JSON
+
+        except requests.exceptions.HTTPError as http_err:
+            logging.error(f"HTTP error occurred: {http_err} - {http_err.response.text}")
+        except requests.exceptions.RequestException as req_err:
+            logging.error(f"Request error occurred: {req_err}")
+        return None
+
+
+    def get_team_member_count(project_id):
+        """Gets the total number of team members for a project."""
+        url = f"{PROJECT_SERVICE_URL}/projects/{project_id}/team-members"
+        data = make_request(url)
+        if data and "team_members" in data:
+            count = len(data["team_members"])
+            logging.info(f"Successfully retrieved team member count: {count}")
+            return count
+        logging.warning("Could not retrieve team member count, defaulting to 0.")
+        return 0
+
+
+    def get_task_summary(sprint_id):
+        """Gets the task summary from the Sprint Service."""
+        url = f"{SPRINT_SERVICE_URL}/sprints/{sprint_id}/task-summary"
+        summary = make_request(url)
+        if summary:
+            logging.info(f"Successfully retrieved task summary: {summary}")
+            return summary
+        return None
+
+
+    def get_sprint_tasks(sprint_id):
+        """Gets all tasks for a sprint to build individual updates."""
+        url = f"{SPRINT_SERVICE_URL}/sprints/{sprint_id}/tasks"
+        tasks = make_request(url)
+        if tasks:
+            logging.info(f"Successfully retrieved {len(tasks)} tasks for sprint {sprint_id}")
+            return tasks
+        return []
+
+
+    def create_daily_scrum_report(payload):
+        """Posts a single daily scrum report to the Chronicle Service."""
+        url = f"{CHRONICLE_SERVICE_URL}/v1/notes/daily_scrum_report"
+        result = make_request(url, method="POST", json_data=payload)
+        if result:
+            logging.info(f"Successfully created daily scrum report entry: {result}")
+        else:
+            logging.error("Failed to create daily scrum report entry.")
+        return result
+
+    # --- Main Orchestration ---
+    def main():
+        """Main orchestration logic for the daily scrum job."""
+        logging.info("--- Starting Daily Scrum Orchestration Job ---")
+
+        if not PROJECT_ID or not SPRINT_ID:
+            logging.error("FATAL: PROJECT_ID and SPRINT_ID environment variables are required.")
+            sys.exit(1)
+
+        logging.info(f"Project ID: {PROJECT_ID}, Sprint ID: {SPRINT_ID}")
+
+        # 1. Gather Summary Metrics
+        logging.info("Step 1: Gathering summary metrics...")
+        team_member_count = get_team_member_count(PROJECT_ID)
+        task_summary = get_task_summary(SPRINT_ID)
+
+        if task_summary is None:
+            logging.error("FATAL: Could not retrieve task summary. Aborting job.")
+            sys.exit(1)
+
+        summary_metrics = {
+            "total_team_members": team_member_count,
+            "total_tasks": task_summary.get("total_tasks", 0),
+            "completed_tasks": task_summary.get("completed_tasks", 0),
+            "pending_tasks": task_summary.get("pending_tasks", 0)
+        }
+        logging.info(f"Compiled summary metrics: {summary_metrics}")
+
+        # 2. Get individual tasks to create the "updates"
+        logging.info("Step 2: Gathering individual tasks for the report body...")
+        tasks = get_sprint_tasks(SPRINT_ID)
+        if not tasks:
+            logging.warning("No tasks found for this sprint. No individual updates will be sent.")
+            # We can still send a summary-only report if needed, but for now we'll just exit.
+            # If we wanted a summary-only report, we would need a different API endpoint in chronicle-service.
+            # Based on the current API, a report requires an employee_id, so we can't create a summary-only note.
+            logging.info("--- Daily Scrum Orchestration Job Finished (No Tasks) ---")
+            return
+
+        # 3. Loop through tasks and post one report per task to Chronicle Service
+        # This simulates each team member's update. In a real scenario, you'd group by employee.
+        logging.info("Step 3: Constructing and posting individual reports...")
+        report_date = datetime.now(timezone.utc).date().isoformat()
+
+        for task in tasks:
+            employee_id = task.get("assigned_to") or "unassigned"
+
+            # Construct the payload for a single report, matching the DailyScrumReportNote model
+            report_payload = {
+                "project_id": PROJECT_ID,
+                "sprint_id": SPRINT_ID,
+                "report_date": report_date,
+                "employee_id": employee_id,
+                "yesterday_work": f"Progressed on task: '{task.get('title', 'N/A')}'",
+                "today_work": "Continue with assigned tasks.",
+                "impediments": "None reported.",
+                "summary_metrics": summary_metrics  # Attach the same summary to each report
+            }
+
+            logging.info(f"Posting report for employee {employee_id} and task {task.get('id')}")
+            create_daily_scrum_report(report_payload)
+
+        logging.info("--- Daily Scrum Orchestration Job Finished ---")
+
+    if __name__ == "__main__":
+        main()
+kind: ConfigMap
+metadata:
+  creationTimestamp: null
+  name: run-dailyscrum
+  namespace: dsm

@@ -1,0 +1,29 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: restore-job
+  namespace: dsm
+spec:
+  template:
+    spec:
+      containers:
+      - name: restore
+        image: postgres:17
+        command: ["/bin/sh", "-c"]
+        args:
+        - "LATEST_DUMP=$(ls -t /backup/dump-*.sql | head -n 1) && psql --host=chronicle-db-v17-vector-svc --username=chronicle_user --dbname=chronicle_db --file=\"$LATEST_DUMP\""
+        env:
+        - name: PGPASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-chronicle-secret
+              key: POSTGRES_PASSWORD
+        volumeMounts:
+        - name: backup-storage
+          mountPath: /backup
+      volumes:
+      - name: backup-storage
+        persistentVolumeClaim:
+          claimName: backup-pvc
+      restartPolicy: Never
+  backoffLimit: 4

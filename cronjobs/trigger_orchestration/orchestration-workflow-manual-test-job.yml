@@ -1,0 +1,24 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: orchestration-workflow-manual-test
+  namespace: dsm
+spec:
+  template:
+    spec:
+      serviceAccountName: orchestration-workflow-sa
+      containers:
+      - name: orchestration-workflow-runner
+        image: bitnami/kubectl:latest
+        command: ["/bin/sh", "-c"]
+        args: ["/scripts/orchestration_workflow.sh"]
+        volumeMounts:
+        - name: script-volume
+          mountPath: /scripts
+      volumes:
+      - name: script-volume
+        configMap:
+          name: orchestration-workflow-scripts
+          defaultMode: 0755
+      restartPolicy: OnFailure
+  backoffLimit: 0

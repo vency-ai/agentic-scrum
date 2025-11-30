@@ -1,0 +1,1 @@
+ALTER TABLE teams ALTER COLUMN project_assign TYPE BOOLEAN USING CASE WHEN project_assign = 'true' THEN TRUE ELSE FALSE END;

@@ -1,0 +1,40 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: create-project-db-job
+  namespace: dsm
+spec:
+  template:
+    metadata:
+      annotations:
+        kubectl.kubernetes.io/restartedAt: "2025-08-27T20:15:00Z"
+    spec:
+      containers:
+      - name: create-db-container
+        image: postgres:13
+        command: ["bash", "-c", "psql -h $POSTGRES_HOST -U $POSTGRES_USER -d $POSTGRES_DB -f /sql/create_project_tables.sql"]
+        envFrom:
+          - secretRef:
+              name: project-db-secret
+          - configMapRef:
+              name: project-db-config
+        env:
+          - name: PGPASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: project-db-secret
+                key: POSTGRES_PASSWORD
+          - name: POSTGRES_HOST
+            value: project-db
+          - name: POSTGRES_DB
+            value: project_db
+          - name: POSTGRES_USER
+            value: dsm_user
+        volumeMounts:
+          - name: project-tables-sql
+            mountPath: /sql
+      volumes:
+        - name: project-tables-sql
+          configMap:
+            name: project-tables-sql-configmap
+      restartPolicy: Never

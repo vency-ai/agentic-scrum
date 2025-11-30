@@ -1,0 +1,36 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: create-chronicle-db-job
+  namespace: dsm
+spec:
+  template:
+    spec:
+      containers:
+      - name: postgrest-db-job
+        image: postgres:13
+        env:
+        - name: PGPASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-chronicle-secret
+              key: POSTGRES_PASSWORD
+        command:
+          - "psql"
+          - "-h"
+          - "postgres-chronicle-service"
+          - "-U"
+          - "chronicle_user"
+          - "-d"
+          - "chronicle_db"
+          - "-f"
+          - "/docker-entrypoint-initdb.d/V13__create_chronicle_notes_table_v2.sql"
+        volumeMounts:
+        - name: sql-scripts
+          mountPath: /docker-entrypoint-initdb.d
+      volumes:
+      - name: sql-scripts
+        configMap:
+          name: chronicle-notes-sql-configmap-v2
+      restartPolicy: Never
+  backoffLimit: 4

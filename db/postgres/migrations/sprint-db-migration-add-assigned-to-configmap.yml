@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sprint-db-migration-add-assigned-to-configmap
+  namespace: dsm
+data:
+  add_assigned_to_to_tasks_table.sql: |
+    ALTER TABLE tasks ADD COLUMN IF NOT EXISTS assigned_to VARCHAR(255);

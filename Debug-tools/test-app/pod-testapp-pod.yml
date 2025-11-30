@@ -1,0 +1,64 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: null
+  labels:
+    env: dev
+    app: testapp-pod
+    version: enhanced
+  name: testapp-pod
+  namespace: dsm
+  annotations:
+    description: "Enhanced testapp-pod with Python 3 and memory system dependencies"
+    cr-agent-03: "ready"
+    python-version: "3.10"
+    packages: "asyncpg,httpx,tenacity,pydantic,pytest"
+spec:
+  containers:
+  - image: myreg.agile-corp.org:5000/testapp-enhanced:1.0.0
+    name: testapp-pod
+    resources:
+      requests:
+        memory: "256Mi"
+        cpu: "100m"
+      limits:
+        memory: "512Mi"  
+        cpu: "500m"
+    # Environment variables for testing
+    env:
+    - name: PYTHONPATH
+      value: "/tmp/memory:/app/memory"
+    - name: EMBEDDING_SERVICE_URL
+      value: "http://embedding-service.dsm.svc.cluster.local"
+    - name: DATABASE_URL
+      value: "postgresql://chronicle_user:dsm_password@chronicle-db.dsm.svc.cluster.local:5432/agent_memory"
+    # Volume mounts for development
+    volumeMounts:
+    - name: memory-test-volume
+      mountPath: /tmp/memory-tests
+    # Readiness probe to verify Python packages
+    readinessProbe:
+      exec:
+        command:
+        - python3
+        - /app/verify_installation.py
+      initialDelaySeconds: 5
+      periodSeconds: 30
+    # Liveness probe
+    livenessProbe:
+      exec:
+        command:
+        - python3
+        - -c
+        - "print('testapp-pod is alive')"
+      initialDelaySeconds: 10
+      periodSeconds: 60
+  volumes:
+  - name: memory-test-volume
+    emptyDir: {}
+  # Image pull secret for private registry (following DSM patterns)
+  imagePullSecrets:
+  - name: agile-corp-reg-secret
+  dnsPolicy: ClusterFirst
+  restartPolicy: Never
+status: {}

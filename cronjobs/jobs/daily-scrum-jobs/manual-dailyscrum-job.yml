@@ -1,0 +1,80 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: manual-dailyscrum-newproj01-s02-test
+  namespace: dsm
+  labels:
+    cronjob: run-dailyscrum-newproj01-newproj01-s02
+    project: NEWPROJ01
+    sprint: NEWPROJ01-S02
+    manual: "true"
+spec:
+  backoffLimit: 4
+  template:
+    metadata:
+      labels:
+        app: dailyscrum-run
+        cronjob: run-dailyscrum-newproj01-newproj01-s02
+        env: production
+        project: NEWPROJ01
+        sprint: NEWPROJ01-S02
+    spec:
+      containers:
+      - command:
+        - /bin/sh
+        - -c
+        - |-
+                  apt-get update -y
+                  apt-get install -y wget # Explicitly install wget
+                  which wget # Check if wget is installed
+
+                  until [ "$(curl -s -o /dev/null -w "%{http_code}" http://daily-scrum-service.dsm.svc.cluster.local/health)" = "200" ]; do
+                    echo 'Waiting for dependency...'
+                    sleep 5
+                  done
+                  echo 'Starting job'
+
+                  apt-get install -y tree
+
+                  pip3 install pandas Flask requests
+
+                  tree /app
+
+                  env
+
+                  python3 /app/run_dailyscrum.py
+        env:
+        - name: PROJECT_ID
+          value: NEWPROJ01
+        - name: SPRINT_ID
+          value: NEWPROJ01-S02
+        image: python:3.10
+        imagePullPolicy: IfNotPresent
+        name: run-dailyscrum
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /app/run_dailyscrum.py
+          name: projects-code-volume
+          subPath: run_dailyscrum.py
+        - mountPath: /app/config/dailyscrum-config.json
+          name: projects-config-volume
+          subPath: dailyscrum-config.json
+      dnsPolicy: ClusterFirst
+      restartPolicy: Never
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - emptyDir:
+          sizeLimit: 500Mi
+        name: cache-volume
+      - configMap:
+          defaultMode: 420
+          name: run-dailyscrum
+        name: projects-code-volume
+      - configMap:
+          defaultMode: 420
+          name: dailyscrum-config
+        name: projects-config-volume

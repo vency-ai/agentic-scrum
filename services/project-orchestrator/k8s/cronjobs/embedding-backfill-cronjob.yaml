@@ -1,0 +1,175 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: embedding-backfill
+  namespace: dsm
+  labels:
+    app: project-orchestrator
+    component: embedding-backfill
+spec:
+  # Run daily at 2:00 AM UTC (low-traffic time)
+  schedule: "0 2 * * *"
+  timeZone: "UTC"
+  concurrencyPolicy: Forbid  # Don't run concurrent backfill jobs
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  suspend: false  # Set to true to disable the job
+  jobTemplate:
+    metadata:
+      labels:
+        app: project-orchestrator
+        component: embedding-backfill
+    spec:
+      # Allow 30 minutes for backfill to complete
+      activeDeadlineSeconds: 1800
+      backoffLimit: 2  # Retry failed jobs twice
+      template:
+        metadata:
+          labels:
+            app: project-orchestrator
+            component: embedding-backfill
+        spec:
+          imagePullSecrets:
+          - name: agile-corp-reg-secret
+          serviceAccountName: project-orchestrator-sa
+          restartPolicy: Never
+          containers:
+          - name: embedding-backfill
+            image: myreg.agile-corp.org:5000/project-orchestrator:1.0.60
+            imagePullPolicy: Always
+            command:
+            - python
+            - -m
+            - services.embedding_backfill_service
+            - "100"  # Max 100 episodes per run
+            - "5"    # Batch size of 5
+            env:
+            - name: PYTHONPATH
+              value: "/app/src"
+            - name: LOG_LEVEL
+              value: "info"
+            # Database connection
+            - name: AGENT_MEMORY_DB_HOST
+              value: "chronicle-db"
+            - name: AGENT_MEMORY_DB_PORT
+              value: "5432"
+            - name: AGENT_MEMORY_DB_NAME
+              value: "agent_memory"
+            - name: AGENT_MEMORY_DB_USER
+              value: "chronicle_user"
+            - name: AGENT_MEMORY_DB_PASSWORD
+              value: "dsm_password"
+            # Embedding service
+            - name: EMBEDDING_SERVICE_URL
+              value: "http://embedding-service.dsm.svc.cluster.local:8000"
+            - name: EMBEDDING_SERVICE_TIMEOUT
+              value: "30"
+            # Feature flags
+            - name: FEATURE_FLAG_ENABLE_ASYNC_LEARNING
+              valueFrom:
+                configMapKeyRef:
+                  name: agent-memory-config
+                  key: enable_async_learning
+            - name: FEATURE_FLAG_ENABLE_EPISODIC_MEMORY
+              valueFrom:
+                configMapKeyRef:
+                  name: agent-memory-config
+                  key: enable_episodic_memory
+            resources:
+              requests:
+                memory: "128Mi"
+                cpu: "100m"
+              limits:
+                memory: "256Mi"
+                cpu: "200m"
+            # Health check - not needed for batch job but good practice
+            livenessProbe:
+              exec:
+                command:
+                - python
+                - -c
+                - "print('Backfill job running')"
+              initialDelaySeconds: 30
+              periodSeconds: 60
+              timeoutSeconds: 5
+              failureThreshold: 3
+            volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+          # Log aggregation for monitoring
+          volumes:
+          - name: tmp
+            emptyDir: {}
+---
+# Manual backfill job template (can be applied on-demand)
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: embedding-backfill-manual
+  namespace: dsm
+  labels:
+    app: project-orchestrator
+    component: embedding-backfill
+    job-type: manual
+spec:
+  # Allow 15 minutes for manual backfill
+  activeDeadlineSeconds: 900
+  backoffLimit: 1
+  template:
+    metadata:
+      labels:
+        app: project-orchestrator
+        component: embedding-backfill
+        job-type: manual
+    spec:
+      imagePullSecrets:
+      - name: agile-corp-reg-secret
+      serviceAccountName: project-orchestrator-sa
+      restartPolicy: Never
+      containers:
+      - name: embedding-backfill-manual
+        image: myreg.agile-corp.org:5000/project-orchestrator:1.0.60
+        imagePullPolicy: Always
+        command:
+        - python
+        - -m
+        - services.embedding_backfill_service
+        - "50"  # Max 50 episodes for manual run
+        - "10"  # Larger batch size for manual
+        env:
+        - name: PYTHONPATH
+          value: "/app/src"
+        - name: LOG_LEVEL
+          value: "debug"  # More verbose for manual runs
+        # Same environment variables as CronJob
+        - name: AGENT_MEMORY_DB_HOST
+          value: "chronicle-db"
+        - name: AGENT_MEMORY_DB_PORT
+          value: "5432"
+        - name: AGENT_MEMORY_DB_NAME
+          value: "agent_memory"
+        - name: AGENT_MEMORY_DB_USER
+          value: "chronicle_user"
+        - name: AGENT_MEMORY_DB_PASSWORD
+          value: "dsm_password"
+        - name: EMBEDDING_SERVICE_URL
+          value: "http://embedding-service.dsm.svc.cluster.local:8000"
+        - name: EMBEDDING_SERVICE_TIMEOUT
+          value: "30"
+        - name: FEATURE_FLAG_ENABLE_ASYNC_LEARNING
+          valueFrom:
+            configMapKeyRef:
+              name: agent-memory-config
+              key: enable_async_learning
+        - name: FEATURE_FLAG_ENABLE_EPISODIC_MEMORY
+          valueFrom:
+            configMapKeyRef:
+              name: agent-memory-config
+              key: enable_episodic_memory
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"

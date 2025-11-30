@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backlog-service
+  namespace: dsm
+  labels:
+    app: backlog-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backlog-service
+  template:
+    metadata:
+      labels:
+        app: backlog-service
+    spec:
+      imagePullSecrets:
+      - name: agile-corp-reg-secret
+      containers:
+      - name: backlog-service
+        image: myreg.agile-corp.org:5000/backlog-service:1.2.4
+        workingDir: /app
+        command: ["python", "-B", "-m", "uvicorn", "app:app", "--host", "0.0.0.0", "--port", "80"]
+        ports:
+        - containerPort: 80
+        startupProbe:
+          httpGet:
+            path: /health/ready
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          failureThreshold: 12 # 1 minute (12 * 5 seconds)
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 80
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 80
+          initialDelaySeconds: 15
+          periodSeconds: 10
+        resources:
+          requests:
+            memory: "200Mi"
+            cpu: "200m"
+          limits:
+            memory: "400Mi"
+            cpu: "400m"
+        envFrom:
+        - secretRef:
+            name: backlog-db-secret
+        - configMapRef:
+            name: backlog-db-config
+        env:
+        - name: PROJECT_SERVICE_URL
+          value: "http://project-service.dsm.svc.cluster.local"
+        - name: PYTHONUNBUFFERED
+          value: "1"
+        - name: REDIS_HOST
+          value: "redis"
+        - name: REDIS_PORT
+          value: "6379"
+        
+      

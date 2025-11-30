@@ -1,0 +1,29 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: failing-jobs-cleanup
+  namespace: dsm
+spec:
+  schedule: "0 7 * * 6"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: failing-jobs-checker-sa
+          containers:
+          - name: failing-jobs-checker
+            image: bitnami/kubectl:latest # Using a kubectl image to have kubectl available
+            command: ["/bin/sh", "-c"]
+            args: ["/scripts/check_failing_jobs_sprint_status_remove_cronjob.sh"]
+            volumeMounts:
+            - name: script-volume
+              mountPath: /scripts
+          volumes:
+          - name: script-volume
+            configMap:
+              name: failing-jobs-checker-script
+              defaultMode: 0755 # Make the script executable
+          restartPolicy: OnFailure

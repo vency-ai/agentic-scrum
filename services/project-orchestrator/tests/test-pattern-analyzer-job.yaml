@@ -1,0 +1,46 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: episode-pattern-analyzer-tests
+  namespace: dsm
+  labels:
+    app: project-orchestrator
+    component: tests
+    test-suite: episode-pattern-analyzer
+spec:
+  activeDeadlineSeconds: 300  # 5 minutes timeout
+  backoffLimit: 1
+  template:
+    metadata:
+      labels:
+        app: project-orchestrator
+        component: tests
+        test-suite: episode-pattern-analyzer
+    spec:
+      imagePullSecrets:
+      - name: agile-corp-reg-secret
+      restartPolicy: Never
+      containers:
+      - name: test-runner
+        image: myreg.agile-corp.org:5000/project-orchestrator-tests:1.0.5
+        imagePullPolicy: Always
+        command:
+        - python
+        - -m
+        - pytest
+        - /app/src/tests/unit/test_episode_pattern_analyzer.py
+        - -v
+        - --tb=long
+        - -s
+        env:
+        - name: PYTHONPATH
+          value: "/app/src"
+        - name: LOG_LEVEL
+          value: "debug"
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"

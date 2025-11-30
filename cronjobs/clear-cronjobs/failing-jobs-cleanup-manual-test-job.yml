@@ -1,0 +1,24 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: failing-jobs-cleanup-manual-test
+  namespace: dsm
+spec:
+  template:
+    spec:
+      serviceAccountName: failing-jobs-checker-sa
+      containers:
+      - name: failing-jobs-checker
+        image: bitnami/kubectl:latest
+        command: ["/bin/sh", "-c"]
+        args: ["/scripts/check_failing_jobs_sprint_status_remove_cronjob.sh"]
+        volumeMounts:
+        - name: script-volume
+          mountPath: /scripts
+      volumes:
+      - name: script-volume
+        configMap:
+          name: failing-jobs-checker-script
+          defaultMode: 0755
+      restartPolicy: OnFailure
+  backoffLimit: 0 # Do not retry on failure for manual tests

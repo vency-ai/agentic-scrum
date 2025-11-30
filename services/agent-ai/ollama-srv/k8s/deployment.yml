@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ollama-server
+  namespace: dsm
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ollama-server
+  template:
+    metadata:
+      labels:
+        app: ollama-server
+    spec:
+      containers:
+      - name: ollama
+        image: myreg.agile-corp.org:5000/ollama-server:1.0.0
+        ports:
+        - containerPort: 11434
+        env:
+        - name: OLLAMA_HOST
+          value: "0.0.0.0:11434"
+        volumeMounts:
+        - name: ollama-models-storage
+          mountPath: /root/.ollama/models
+        - name: ollama-models-config
+          mountPath: /app/models.json
+          subPath: models.json
+      volumes:
+      - name: ollama-models-storage
+        persistentVolumeClaim:
+          claimName: ollama-models-pvc
+      - name: ollama-models-config
+        configMap:
+          name: ollama-models-config
+      imagePullSecrets:
+      - name: agile-corp-reg-secret

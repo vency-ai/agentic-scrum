@@ -1,0 +1,394 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backlog-service-scripts
+  namespace: dsm
+data:
+  app.py: |
+    from fastapi import FastAPI, HTTPException, Query
+    from pydantic import BaseModel
+    import structlog
+    import psycopg2
+    from typing import List, Optional, Dict
+    import httpx # For making HTTP requests to other services
+    import random # For simulating task generation
+
+    from utils import get_db_connection, call_project_service, get_all_projects
+
+    logger = structlog.get_logger()
+
+    app = FastAPI()
+
+    # Pydantic models for data validation
+    class Project(BaseModel):
+        id: str
+        name: str
+        description: str
+
+    class Task(BaseModel):
+        task_id: str
+        project_id: str
+        title: str
+        description: str
+        status: str = "unassigned" # Default status
+        assigned_to: Optional[str] = None
+        sprint_id: Optional[str] = None
+        progress_percentage: Optional[int] = 0
+
+    class TaskUpdate(BaseModel):
+        title: Optional[str] = None
+        description: Optional[str] = None
+        status: Optional[str] = None
+        assigned_to: Optional[str] = None
+        sprint_id: Optional[str] = None
+        progress_percentage: Optional[int] = None
+
+    @app.get("/health", status_code=200)
+    def health_check():
+        """Health check endpoint to verify service is running."""
+        return {"status": "ok"}
+
+    @app.get("/backlogs/summary", status_code=200)
+    async def get_all_backlog_summaries():
+        """
+        Retrieves a summary of all backlogs for all projects.
+        """
+        logger.info("Received request to get all backlog summaries")
+        conn = None
+        try:
+            # 1. Get all projects
+            projects = await get_all_projects()
+            logger.info("Projects received from project-service", projects=projects)
+            if not projects:
+                return []
+
+            project_ids = [p['id'] for p in projects]
+
+            # 2. Get backlog summaries for all projects in one query
+            conn = get_db_connection()
+            cur = conn.cursor()
+
+            query = "SELECT project_id, status, COUNT(*) FROM tasks WHERE project_id = ANY(%s) GROUP BY project_id, status"
+            cur.execute(query, (project_ids,))
+            
+            summary_data = cur.fetchall()
+            cur.close()
+
+            # 3. Process the data
+            summaries = {}
+            for project_id, status, count in summary_data:
+                if project_id not in summaries:
+                    summaries[project_id] = {
+                        "project_id": project_id,
+                        "total_tasks": 0,
+                        "status_counts": {}
+                    }
+                summaries[project_id]["total_tasks"] += count
+                summaries[project_id]["status_counts"][status] = count
+            
+            # Add projects that might not have tasks yet
+            for p in projects:
+                if p['id'] not in summaries:
+                    summaries[p['id']] = {
+                        "project_id": p['id'],
+                        "total_tasks": 0,
+                        "status_counts": {}
+                    }
+
+            logger.info("Successfully retrieved all backlog summaries", count=len(summaries))
+            return list(summaries.values())
+
+        except (Exception, psycopg2.DatabaseError) as error:
+            logger.error("Database error while retrieving all backlog summaries", error=str(error))
+            raise HTTPException(status_code=500, detail="Database operation failed during summary retrieval.")
+        finally:
+            if conn:
+                conn.close()
+                logger.info("Database connection closed.")
+
+    @app.post("/backlogs/{project_id}", status_code=201)
+    async def generate_backlog(project_id: str):
+        """
+        Generates the initial task backlog for a given project.
+        This endpoint will call the Project Service to get project details and simulate task creation.
+        """
+        logger.info("Received request to generate backlog", project_id=project_id)
+        conn = None
+        try:
+            # 1. Call Project Service to verify project existence and get team members (simulated)
+            # In a real scenario, Project Service would return team members for task assignment
+            project_details = await call_project_service(project_id)
+            if not project_details:
+                raise HTTPException(status_code=404, detail=f"Project {project_id} not found.")
+
+            # Simulate task generation based on project details
+            # For simplicity, we'll create some generic tasks
+            simulated_tasks = [
+                {"title": "Setup development environment", "description": "Configure IDEs and necessary tools."},
+                {"title": "Design database schema", "description": "Create ERD and define tables."},
+                {"title": "Implement user authentication", "description": "Develop login/logout and registration features."},
+                {"title": "Build UI for dashboard", "description": "Create the main dashboard interface."},
+                {"title": "Develop API for task management", "description": "Implement CRUD operations for tasks."},
+                {"title": "Write unit tests for backend", "description": "Ensure code quality with comprehensive tests."},
+                {"title": "Deploy to staging environment", "description": "Set up CI/CD for automated deployments."},
+                {"title": "Conduct user acceptance testing", "description": "Gather feedback from end-users."},
+                {"title": "Prepare documentation", "description": "Write API docs and user guides."},
+                {"title": "Refactor legacy code", "description": "Improve existing code for maintainability."},
+            ]
+            
+            tasks_to_insert = []
+            for i, task_data in enumerate(simulated_tasks):
+                task_id = f"{project_id}-TASK{i+1:03d}"
+                tasks_to_insert.append(Task(
+                    task_id=task_id,
+                    project_id=project_id,
+                    title=task_data["title"],
+                    description=task_data["description"],
+                    status="unassigned"
+                ))
+
+            conn = get_db_connection()
+            cur = conn.cursor()
+
+            # Create tasks table if it doesn't exist (for initial setup)
+            # cur.execute("""
+            #     CREATE TABLE IF NOT EXISTS tasks (
+            #         task_id VARCHAR(20) PRIMARY KEY,
+            #         project_id VARCHAR(10) NOT NULL,
+            #         title VARCHAR(255) NOT NULL,
+            #         description TEXT,
+            #         status VARCHAR(50) NOT NULL,
+            #         assigned_to VARCHAR(10),
+            #         sprint_id VARCHAR(10),
+            #         progress_percentage INTEGER DEFAULT 0
+            #     );
+            # """)
+
+            # Insert tasks
+            for task in tasks_to_insert:
+                cur.execute(
+                    "INSERT INTO tasks (task_id, project_id, title, description, status, assigned_to, sprint_id, progress_percentage) VALUES (%s, %s, %s, %s, %s, %s, %s, %s) ON CONFLICT (task_id) DO UPDATE SET title = EXCLUDED.title, description = EXCLUDED.description, status = EXCLUDED.status, assigned_to = EXCLUDED.assigned_to, sprint_id = EXCLUDED.sprint_id, progress_percentage = EXCLUDED.progress_percentage;",
+                    (task.task_id, task.project_id, task.title, task.description, task.status, task.assigned_to, task.sprint_id, task.progress_percentage)
+                )
+
+            conn.commit()
+            cur.close()
+            logger.info("Successfully generated backlog", project_id=project_id, tasks_count=len(tasks_to_insert))
+            return {"message": f"Backlog generated successfully for project {project_id}", "tasks_count": len(tasks_to_insert)}
+
+        except HTTPException:
+            raise # Re-raise HTTPExceptions from call_project_service
+        except (Exception, psycopg2.DatabaseError) as error:
+            logger.error("Database error while generating backlog", error=str(error))
+            if conn:
+                conn.rollback()
+            raise HTTPException(status_code=500, detail="Database operation failed during backlog generation.")
+        finally:
+            if conn:
+                conn.close()
+                logger.info("Database connection closed.")
+
+    @app.get("/backlogs/{project_id}", status_code=200, response_model=List[Task])
+    def get_backlog_tasks(project_id: str, status: Optional[str] = Query(None)):
+        """
+        Retrieves the current list of tasks in the backlog for a specific project.
+        Can be filtered by status.
+        """
+        logger.info("Received request to get backlog tasks", project_id=project_id, status=status)
+        conn = None
+        try:
+            conn = get_db_connection()
+            cur = conn.cursor()
+
+            query = "SELECT task_id, project_id, title, description, status, assigned_to, sprint_id, progress_percentage FROM tasks WHERE project_id = %s"
+            params = [project_id]
+
+            if status:
+                query += " AND status = %s"
+                params.append(status)
+
+            cur.execute(query, params)
+            tasks_data = cur.fetchall()
+            cur.close()
+
+            tasks_list = []
+            for task_id, prj_id, title, desc, stat, assigned, sprint, progress in tasks_data:
+                tasks_list.append(Task(
+                    task_id=task_id,
+                    project_id=prj_id,
+                    title=title,
+                    description=desc,
+                    status=stat,
+                    assigned_to=assigned,
+                    sprint_id=sprint,
+                    progress_percentage=progress
+                ))
+
+            logger.info("Successfully retrieved backlog tasks", project_id=project_id, count=len(tasks_list))
+            return tasks_list
+
+        except (Exception, psycopg2.DatabaseError) as error:
+            logger.error("Database error while retrieving backlog tasks", error=str(error))
+            raise HTTPException(status_code=500, detail="Database operation failed during task retrieval.")
+        finally:
+            if conn:
+                conn.close()
+                logger.info("Database connection closed.")
+
+    @app.get("/backlogs/{project_id}/summary", status_code=200)
+    def get_backlog_summary(project_id: str):
+        """
+        Retrieves a summary of the backlog for a specific project,
+        including total tasks and counts by status.
+        """
+        logger.info("Received request to get backlog summary", project_id=project_id)
+        conn = None
+        try:
+            conn = get_db_connection()
+            cur = conn.cursor()
+
+            # Get total tasks
+            cur.execute("SELECT COUNT(*) FROM tasks WHERE project_id = %s", (project_id,))
+            total_tasks = cur.fetchone()[0]
+
+            # Get tasks by status
+            cur.execute("SELECT status, COUNT(*) FROM tasks WHERE project_id = %s GROUP BY status", (project_id,))
+            status_counts = {row[0]: row[1] for row in cur.fetchall()}
+            cur.close()
+
+            logger.info("Successfully retrieved backlog summary", project_id=project_id, total_tasks=total_tasks, status_counts=status_counts)
+            return {
+                "project_id": project_id,
+                "total_tasks": total_tasks,
+                "status_counts": status_counts
+            }
+
+        except (Exception, psycopg2.DatabaseError) as error:
+            logger.error("Database error while retrieving backlog summary", error=str(error))
+            raise HTTPException(status_code=500, detail="Database operation failed during summary retrieval.")
+        finally:
+            if conn:
+                conn.close()
+                logger.info("Database connection closed.")
+
+    @app.put("/tasks/{task_id}", status_code=200)
+    def update_task(task_id: str, task_update: TaskUpdate):
+        """
+        Updates the status or other attributes of a specific task in the backlog.
+        """
+        logger.info("Received request to update task", task_id=task_id, update_data=task_update.dict())
+        conn = None
+        try:
+            conn = get_db_connection()
+            cur = conn.cursor()
+
+            # Build dynamic update query based on provided fields
+            update_fields = []
+            params = []
+            if task_update.title is not None:
+                update_fields.append("title = %s")
+                params.append(task_update.title)
+            if task_update.description is not None:
+                update_fields.append("description = %s")
+                params.append(task_update.description)
+            if task_update.status is not None:
+                update_fields.append("status = %s")
+                params.append(task_update.status)
+            if task_update.assigned_to is not None:
+                update_fields.append("assigned_to = %s")
+                params.append(task_update.assigned_to)
+            if task_update.sprint_id is not None:
+                update_fields.append("sprint_id = %s")
+                params.append(task_update.sprint_id)
+            if task_update.progress_percentage is not None:
+                update_fields.append("progress_percentage = %s")
+                params.append(task_update.progress_percentage)
+
+            if not update_fields:
+                raise HTTPException(status_code=422, detail="No fields provided for update.")
+
+            query = f"UPDATE tasks SET {', '.join(update_fields)} WHERE task_id = %s"
+            params.append(task_id)
+
+            cur.execute(query, params)
+            if cur.rowcount == 0:
+                raise HTTPException(status_code=404, detail=f"Task {task_id} not found.")
+
+            conn.commit()
+            cur.close()
+            logger.info("Successfully updated task", task_id=task_id)
+            return {"message": f"Task {task_id} updated successfully"}
+
+        except HTTPException:
+            raise # Re-raise HTTPExceptions
+        except (Exception, psycopg2.DatabaseError) as error:
+            logger.error("Database error while updating task", error=str(error))
+            if conn:
+                conn.rollback()
+            raise HTTPException(status_code=500, detail="Database operation failed during task update.")
+        finally:
+            if conn:
+                conn.close()
+                logger.info("Database connection closed.")
+  utils.py: |
+    import os
+    import psycopg2
+    import structlog
+    import httpx # For making HTTP requests to other services
+    from fastapi import HTTPException
+
+    logger = structlog.get_logger(__name__)
+
+    def get_db_connection():
+        try:
+            db_host = os.getenv("POSTGRES_HOST", "postgres")
+            db_name = os.getenv("POSTGRES_DB")
+            db_user = os.getenv("POSTGRES_USER")
+            db_password = os.getenv("POSTGRES_PASSWORD")
+
+            logger.info("Attempting to connect to database...")
+            conn = psycopg2.connect(
+                host=db_host,
+                database=db_name,
+                user=db_user,
+                password=db_password
+            )
+            logger.info("Database connection successful.")
+            return conn
+        except psycopg2.OperationalError as e:
+            logger.error("Database connection failed.", error=str(e))
+            raise
+
+    async def call_project_service(project_id: str):
+        project_service_url = os.getenv("PROJECT_SERVICE_URL", "http://project-service.dsm.svc.cluster.local")
+        async with httpx.AsyncClient() as client:
+            try:
+                response = await client.get(f"{project_service_url}/projects/{project_id}")
+                response.raise_for_status() # Raise an exception for 4xx/5xx responses
+                return response.json()
+            except httpx.HTTPStatusError as e:
+                logger.error("Error calling Project Service", status_code=e.response.status_code, response_text=e.response.text)
+                raise HTTPException(status_code=e.response.status_code, detail=f"Error from Project Service: {e.response.text}")
+            except httpx.RequestError as e:
+                logger.error("Network error calling Project Service", error=str(e))
+                raise HTTPException(status_code=500, detail=f"Network error connecting to Project Service: {e}")
+
+    async def get_all_projects():
+        project_service_url = os.getenv("PROJECT_SERVICE_URL", "http://project-service.dsm.svc.cluster.local")
+        async with httpx.AsyncClient() as client:
+            try:
+                response = await client.get(f"{project_service_url}/projects")
+                response.raise_for_status()
+                return response.json()
+            except httpx.HTTPStatusError as e:
+                logger.error("Error calling Project Service for all projects", status_code=e.response.status_code, response_text=e.response.text)
+                raise HTTPException(status_code=e.response.status_code, detail=f"Error from Project Service: {e.response.text}")
+            except httpx.RequestError as e:
+                logger.error("Network error calling Project Service for all projects", error=str(e))
+                raise HTTPException(status_code=500, detail=f"Network error connecting to Project Service: {e}")
+  requirements.txt: |
+    fastapi
+    uvicorn
+    psycopg2-binary
+    structlog
+    httpx

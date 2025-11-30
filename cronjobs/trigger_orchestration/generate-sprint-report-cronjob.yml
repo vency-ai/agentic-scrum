@@ -1,0 +1,29 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: generate-sprint-report
+  namespace: dsm
+spec:
+  schedule: "0 8 * * *" # Daily at 8:00 AM CST
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: sprint-report-generator-sa
+          containers:
+          - name: sprint-report-generator
+            image: bitnami/kubectl:latest
+            command: ["/bin/sh", "-c"]
+            args: ["/scripts/generate_sprint_report.sh"]
+            volumeMounts:
+            - name: script-volume
+              mountPath: /scripts
+          volumes:
+          - name: script-volume
+            configMap:
+              name: generate-sprint-report-script # ConfigMap name for the script
+              defaultMode: 0755
+          restartPolicy: OnFailure

@@ -1,0 +1,87 @@
+[
+    {
+        "date": "2025-01-01",
+        "name": "New Year's Day",
+        "type": "Federal"
+    },
+    {
+        "date": "2025-01-20",
+        "name": "Martin Luther King, Jr.'s Birthday",
+        "type": "Federal"
+    },
+    {
+        "date": "2025-02-17",
+        "name": "Washington's Birthday",
+        "type": "Federal"
+    },
+    {
+        "date": "2025-05-26",
+        "name": "Memorial Day",
+        "type": "Federal"
+    },
+    {
+        "date": "2025-06-19",
+        "name": "Juneteenth National Independence Day",
+        "type": "Federal"
+    },
+    {
+        "date": "2025-07-04",
+        "name": "Independence Day",
+        "type": "Federal"
+    },
+    {
+        "date": "2025-09-01",
+        "name": "Labor Day",
+        "type": "Federal"
+    },
+    {
+        "date": "2025-10-13",
+        "name": "Columbus Day",
+        "type": "Federal"
+    },
+    {
+        "date": "2025-11-11",
+        "name": "Veterans Day",
+        "type": "Federal"
+    },
+    {
+        "date": "2025-11-27",
+        "name": "Thanksgiving Day",
+        "type": "Federal"
+    },
+    {
+        "date": "2025-12-25",
+        "name": "Christmas Day",
+        "type": "Federal"
+    },
+    {
+        "date": "2025-03-17",
+        "name": "St. Patrick's Day",
+        "type": "Observance"
+    },
+    {
+        "date": "2025-04-20",
+        "name": "Easter Sunday",
+        "type": "Religious"
+    },
+    {
+        "date": "2025-10-31",
+        "name": "Halloween",
+        "type": "Observance"
+    },
+    {
+        "date": "2025-12-31",
+        "name": "New Year's Eve",
+        "type": "Observance"
+    },
+    {
+        "date": "2025-01-04",
+        "name": "Weekend Holiday (Saturday)",
+        "type": "Test"
+    },
+    {
+        "date": "2025-01-05",
+        "name": "Weekend Holiday (Sunday)",
+        "type": "Test"
+    }
+]

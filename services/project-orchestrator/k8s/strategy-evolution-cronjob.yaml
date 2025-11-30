@@ -1,0 +1,114 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: strategy-evolution-job
+  namespace: dsm
+  labels:
+    app: strategy-evolution
+    component: cronjob
+    version: v1.0.0
+spec:
+  # Run daily at 02:00 UTC (as specified in CR document)
+  schedule: "0 2 * * *"
+  concurrencyPolicy: Forbid  # Prevent overlapping runs
+  failedJobsHistoryLimit: 3
+  successfulJobsHistoryLimit: 3
+  suspend: false  # Set to true to disable temporarily
+  jobTemplate:
+    metadata:
+      labels:
+        app: strategy-evolution
+        component: job
+    spec:
+      template:
+        metadata:
+          labels:
+            app: strategy-evolution
+            component: pod
+        spec:
+          restartPolicy: OnFailure
+          serviceAccountName: project-orchestrator-sa
+          containers:
+          - name: strategy-evolution
+            image: myreg.agile-corp.org:5000/project-orchestrator:1.0.23-flags-fixed
+            imagePullPolicy: IfNotPresent
+            command: ["/usr/local/bin/python"]
+            args: ["/app/src/cli/run_strategy_evolution.py"]
+            env:
+            # Database connection
+            - name: AGENT_MEMORY_DB_CONNECTION_STRING
+              value: "postgresql://chronicle_user:dsm_password@chronicle-db.dsm.svc.cluster.local:5432/agent_memory"
+            - name: AGENT_MEMORY_DB_MIN_CONNECTIONS
+              value: "2"
+            - name: AGENT_MEMORY_DB_MAX_CONNECTIONS
+              value: "10"
+            
+            # Service URLs
+            - name: PROJECT_SERVICE_URL
+              value: "http://project-service.dsm.svc.cluster.local"
+            - name: BACKLOG_SERVICE_URL
+              value: "http://backlog-service.dsm.svc.cluster.local"
+            - name: SPRINT_SERVICE_URL
+              value: "http://sprint-service.dsm.svc.cluster.local"
+            - name: CHRONICLE_SERVICE_URL
+              value: "http://chronicle-service.dsm.svc.cluster.local"
+            - name: EMBEDDING_SERVICE_URL
+              value: "http://embedding-service.dsm.svc.cluster.local"
+            
+            # Strategy Evolution Configuration
+            - name: ENABLE_STRATEGY_EVOLUTION
+              value: "true"
+            - name: MIN_EPISODES_FOR_EVOLUTION
+              value: "10"
+            - name: PATTERN_EXTRACTION_DAYS
+              value: "30"
+            - name: MAX_STRATEGIES_PER_EVOLUTION
+              value: "20"
+            
+            # Logging Configuration
+            - name: LOG_LEVEL
+              value: "INFO"
+            - name: PYTHONPATH
+              value: "/app/src"
+            
+            resources:
+              requests:
+                memory: "256Mi"
+                cpu: "200m"
+              limits:
+                memory: "512Mi"
+                cpu: "500m"
+            
+            # Health check during execution
+            livenessProbe:
+              exec:
+                command:
+                - /bin/sh
+                - -c
+                - "ps aux | grep python | grep -v grep"
+              initialDelaySeconds: 30
+              periodSeconds: 30
+              timeoutSeconds: 10
+              failureThreshold: 3
+          
+          # Security context
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            fsGroup: 1000
+          
+          # Node selection (optional - can be customized based on cluster setup)
+          nodeSelector:
+            kubernetes.io/os: linux
+          
+          # Tolerations (optional - adjust based on cluster taints)
+          tolerations:
+          - key: "node.kubernetes.io/not-ready"
+            operator: "Exists"
+            effect: "NoExecute"
+            tolerationSeconds: 300
+          - key: "node.kubernetes.io/unreachable"
+            operator: "Exists"
+            effect: "NoExecute"
+            tolerationSeconds: 300

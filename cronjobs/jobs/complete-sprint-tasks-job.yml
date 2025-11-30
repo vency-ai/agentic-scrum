@@ -1,0 +1,41 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: complete-sprint-tasks-job
+  namespace: dsm
+spec:
+  template:
+    spec:
+      containers:
+      - name: task-completer
+        image: curlimages/curl:latest
+        command: ["/bin/sh", "-c"]
+        args:
+          - |
+            SPRINT_ID="TEST-001-S08"
+            echo "Fetching tasks for sprint: $SPRINT_ID"
+            TASKS_RESPONSE=$(curl -s http://sprint-service.dsm.svc.cluster.local/sprints/$SPRINT_ID)
+            echo "Raw Tasks Response: $TASKS_RESPONSE"
+
+            # Extract task_ids using grep, cut, and tr
+            TASK_IDS=$(echo "$TASKS_RESPONSE" | grep -o '"task_id": "[^"]*"' | cut -d':' -f2 | tr -d ' "')
+
+            if [ -z "$TASK_IDS" ]; then
+              echo "No tasks found for sprint $SPRINT_ID or failed to parse tasks. Exiting."
+              exit 0
+            fi
+
+            echo "Found tasks: $TASK_IDS"
+
+            for TASK_ID in $TASK_IDS;
+            do
+              echo "Completing task: $TASK_ID"
+              curl -X POST -H "Content-Type: application/json" -d '{
+                  "status": "completed",
+                  "progress_percentage": 100
+              }' http://sprint-service.dsm.svc.cluster.local/tasks/$TASK_ID/progress
+              echo ""
+            done
+            echo "All tasks processed."
+      restartPolicy: Never
+  backoffLimit: 0

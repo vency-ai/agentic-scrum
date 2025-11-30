@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-log-app
+  labels:
+    app: test-log-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: test-log-app
+  template:
+    metadata:
+      labels:
+        app: test-log-app
+    spec:
+      initContainers:
+      - name: install-dependencies
+        image: python:3.9-slim-buster
+        command: ["/bin/bash", "-c"]
+        args:
+          - cp /config/main.py /app/main.py;
+            cp /config/log_config.py /app/log_config.py;
+            cp /config/requirements.txt /app/requirements.txt;
+            python -m venv /app/venv;
+            /app/venv/bin/pip install --no-cache-dir -r /app/requirements.txt;
+        volumeMounts:
+        - name: app-config
+          mountPath: /config
+        - name: app-code
+          mountPath: /app
+      containers:
+      - name: test-log-app
+        image: python:3.9-slim-buster
+        workingDir: /app
+        command: ["/app/venv/bin/python", "main.py"]
+        ports:
+        - containerPort: 8000
+        volumeMounts:
+        - name: app-code
+          mountPath: /app
+      volumes:
+      - name: app-config
+        configMap:
+          name: test-log-app-config
+      - name: app-code
+        emptyDir: {}

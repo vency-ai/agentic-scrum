@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: project-db-config
+  namespace: dsm
+data:
+  POSTGRES_DB: project_db
+  POSTGRES_USER: dsm_user
+  POSTGRES_HOST: project-db

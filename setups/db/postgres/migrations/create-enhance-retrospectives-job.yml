@@ -1,0 +1,39 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: create-enhance-retrospectives-job
+  namespace: dsm
+spec:
+  template:
+    spec:
+      containers:
+      - name: enhance-retrospectives
+        image: postgres:13
+        command: ["/bin/bash", "-c"]
+        args:
+          - "psql -h chronicle-db -U ${PGUSER} -d ${PGDATABASE} -f /etc/sql/V20__enhance_sprint_retrospectives_table.sql"
+        env:
+        - name: PGPASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-chronicle-secret
+              key: POSTGRES_PASSWORD
+        - name: PGUSER
+          valueFrom:
+            configMapKeyRef:
+              name: postgres-chronicle-config
+              key: POSTGRES_USER
+        - name: PGDATABASE
+          valueFrom:
+            configMapKeyRef:
+              name: postgres-chronicle-config
+              key: POSTGRES_DB
+        volumeMounts:
+        - name: sql-script
+          mountPath: /etc/sql
+      volumes:
+      - name: sql-script
+        configMap:
+          name: v20-enhance-sprint-retrospectives-sql-cm
+      restartPolicy: OnFailure
+  backoffLimit: 4

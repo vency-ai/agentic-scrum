@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: daily-scrum-service
+  namespace: dsm
+  labels:
+    app: daily-scrum-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: daily-scrum-service
+  template:
+    metadata:
+      labels:
+        app: daily-scrum-service
+    spec:
+      containers:
+      - name: daily-scrum-service
+        image: myreg.agile-corp.org:5000/daily-scrum-service:1.0.0
+        ports:
+        - containerPort: 80
+        resources:
+          requests:
+            memory: "200Mi"
+            cpu: "200m"
+          limits:
+            memory: "400Mi"
+            cpu: "400m"
+        env:
+        - name: SPRINT_SERVICE_URL
+          value: "http://sprint-service.dsm.svc.cluster.local"
+        - name: CHRONICLE_SERVICE_URL
+          value: "http://chronicle-service.dsm.svc.cluster.local"
+        - name: REDIS_HOST
+          value: "redis"
+        - name: REDIS_PORT
+          value: "6379"
+      imagePullSecrets:
+      - name: agile-corp-reg-secret

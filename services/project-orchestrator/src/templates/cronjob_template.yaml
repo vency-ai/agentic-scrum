@@ -1,0 +1,73 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ cronjob_name }}
+  namespace: dsm
+  labels:
+    cronjob: {{ cronjob_name }}
+    project: {{ project_id }}
+    sprint: {{ sprint_id }}
+    team: scrum
+spec:
+  schedule: "{{ schedule }}"
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 4
+      template:
+        metadata:
+          labels:
+            app: dailyscrum-run
+            env: production
+            cronjob: {{ cronjob_name }}
+            project: {{ project_id }}
+            sprint: {{ sprint_id }}
+        spec:
+          containers:
+          - image: python:3.10
+            name: run-dailyscrum
+            command:
+              - "/bin/sh"
+              - "-c"
+              - |-
+                  set -e
+                  echo "--- Waiting for Sprint Service ---"
+                  until curl -s -f http://sprint-service.dsm.svc.cluster.local/health; do
+                    echo 'Waiting for dependency...'
+                    sleep 5
+                  done
+                  
+                  echo "--- Triggering Daily Scrum Simulation ---"
+                  curl -X POST -f "http://sprint-service.dsm.svc.cluster.local/sprints/${SPRINT_ID}/run-daily-scrum"
+                  echo "--- Simulation Triggered Successfully ---"
+
+                  echo "--- Starting Daily Scrum Reporting ---"
+                  pip3 install requests
+                  python3 /app/run_dailyscrum.py
+                  echo "--- Reporting Job Finished ---"
+            volumeMounts:
+            - name: projects-code-volume
+              mountPath: /app/run_dailyscrum.py
+              subPath: run_dailyscrum.py
+            env:
+            - name: PROJECT_ID
+              value: "{{ project_id }}"
+            - name: SPRINT_ID
+              value: "{{ sprint_id }}"
+            - name: PROJECT_SERVICE_URL
+              value: "http://project-service.dsm.svc.cluster.local:80"
+            - name: SPRINT_SERVICE_URL
+              value: "http://sprint-service.dsm.svc.cluster.local:80"
+            - name: CHRONICLE_SERVICE_URL
+              value: "http://chronicle-service.dsm.svc.cluster.local:80"
+
+          dnsPolicy: ClusterFirst
+          restartPolicy: Never
+          volumes:
+            - name: cache-volume
+              emptyDir:
+                sizeLimit: 500Mi
+            - name: projects-code-volume
+              configMap:
+                name: run-dailyscrum

@@ -1,0 +1,4 @@
+psycopg2-binary
+structlog
+pandas
+mimesis==11.1.0

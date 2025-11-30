@@ -1,0 +1,1 @@
+ALTER TABLE us_holidays ADD COLUMN type VARCHAR(50);

@@ -1,0 +1,113 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: phase3-integration-tests
+  namespace: dsm
+  labels:
+    app: project-orchestrator
+    component: tests
+    test-suite: phase3-integration
+spec:
+  activeDeadlineSeconds: 300  # 5 minutes timeout
+  backoffLimit: 1
+  template:
+    metadata:
+      labels:
+        app: project-orchestrator
+        component: tests
+        test-suite: phase3-integration
+    spec:
+      imagePullSecrets:
+      - name: agile-corp-reg-secret
+      restartPolicy: Never
+      containers:
+      - name: test-runner
+        image: myreg.agile-corp.org:5000/project-orchestrator-tests:1.0.5
+        imagePullPolicy: Always
+        command:
+        - python
+        - -c
+        - |
+          import sys
+          sys.path.insert(0, '/app/src')
+          
+          print("=== Testing Phase 3: Enhanced Pattern Engine Integration ===")
+          
+          try:
+              # Test Pattern Combiner import and basic functionality
+              from intelligence.pattern_combiner import PatternCombiner, CombinedPattern, PatternCombinationResult
+              print("✓ Pattern Combiner imports successful")
+              
+              combiner = PatternCombiner()
+              print(f"✓ Pattern Combiner initialized: {type(combiner)}")
+              
+              # Test Enhanced Pattern Engine import and integration
+              from intelligence.pattern_engine import PatternEngine
+              print("✓ Enhanced Pattern Engine imports successful")
+              
+              # Test Enhanced Pattern Engine initialization includes Pattern Combiner
+              from unittest.mock import Mock
+              mock_client = Mock()
+              mock_config = Mock()
+              
+              engine = PatternEngine(mock_client, mock_config)
+              print(f"✓ Pattern Engine initialized with Pattern Combiner: {hasattr(engine, 'pattern_combiner')}")
+              
+              if hasattr(engine, 'pattern_combiner'):
+                  print(f"✓ Pattern Combiner properly integrated: {type(engine.pattern_combiner)}")
+              else:
+                  print("✗ Pattern Combiner not integrated")
+                  sys.exit(1)
+              
+              # Test that new hybrid methods exist
+              required_methods = [
+                  'analyze_hybrid_patterns',
+                  'generate_hybrid_insights_summary', 
+                  'validate_hybrid_pattern_confidence'
+              ]
+              
+              for method in required_methods:
+                  if hasattr(engine, method):
+                      print(f"✓ Pattern Engine has {method} method")
+                  else:
+                      print(f"✗ Pattern Engine missing {method} method")
+                      sys.exit(1)
+              
+              # Test Pattern Combiner core methods
+              combiner_methods = [
+                  'combine_patterns',
+                  'get_recommended_values'
+              ]
+              
+              for method in combiner_methods:
+                  if hasattr(combiner, method):
+                      print(f"✓ Pattern Combiner has {method} method")
+                  else:
+                      print(f"✗ Pattern Combiner missing {method} method")
+                      sys.exit(1)
+              
+              # Test data models import
+              from models.decision_context import EpisodeBasedDecisionContext, DecisionPattern
+              from models import PatternAnalysis, SimilarProject, SuccessIndicators
+              print("✓ All required data models imported successfully")
+              
+              print("\n=== Phase 3 Integration Test PASSED ===")
+              print("Enhanced Pattern Engine with Pattern Combiner - COMPLETED")
+              
+          except Exception as e:
+              print(f"✗ Phase 3 integration test failed: {e}")
+              import traceback
+              traceback.print_exc()
+              sys.exit(1)
+        env:
+        - name: PYTHONPATH
+          value: "/app/src"
+        - name: LOG_LEVEL
+          value: "debug"
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"

@@ -1,0 +1,95 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: project-orchestrator
+  namespace: dsm
+  labels:
+    app: project-orchestrator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: project-orchestrator
+  template:
+    metadata:
+      labels:
+        app: project-orchestrator
+    spec:
+      imagePullSecrets:
+      - name: agile-corp-reg-secret
+      serviceAccountName: project-orchestrator-sa # Will be created in Step 5.3
+      containers:
+      - name: project-orchestrator
+        image: myreg.agile-corp.org:5000/project-orchestrator:1.0.20
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 80
+        startupProbe:
+          httpGet:
+            path: /health/ready
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          failureThreshold: 12 # 1 minute (12 * 5 seconds)
+        readinessProbe:
+          httpGet:
+            path: /health/ready
+            port: 80
+          initialDelaySeconds: 20 # Increased from 10
+          periodSeconds: 10 # Increased from 5
+          failureThreshold: 5 # Increased from 3
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 80
+          initialDelaySeconds: 25 # Increased from 15
+          periodSeconds: 10
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        env:
+        - name: PYTHONUNBUFFERED
+          value: "1"
+        - name: LOG_LEVEL
+          value: "debug"
+        - name: REDIS_HOST
+          value: "redis"
+        - name: REDIS_PORT
+          value: "6379"
+        - name: PROJECT_SERVICE_URL
+          value: "http://project-service.dsm.svc.cluster.local"
+        - name: BACKLOG_SERVICE_URL
+          value: "http://backlog-service.dsm.svc.cluster.local"
+        - name: SPRINT_SERVICE_URL
+          value: "http://sprint-service.dsm.svc.cluster.local"
+        - name: CHRONICLE_SERVICE_URL
+          value: "http://chronicle-service.dsm.svc.cluster.local"
+        - name: K8S_NAMESPACE
+          value: "dsm"
+        - name: FEATURE_FLAG_ENABLE_ASYNC_LEARNING
+          valueFrom:
+            configMapKeyRef:
+              name: agent-memory-config
+              key: enable_async_learning
+        - name: FEATURE_FLAG_ENABLE_STRATEGY_EVOLUTION
+          valueFrom:
+            configMapKeyRef:
+              name: agent-memory-config
+              key: enable_strategy_evolution
+        - name: FEATURE_FLAG_ENABLE_CROSS_PROJECT_LEARNING
+          valueFrom:
+            configMapKeyRef:
+              name: agent-memory-config
+              key: enable_cross_project_learning
+        volumeMounts:
+        - name: config-volume
+          mountPath: /app/src/config/base.yaml
+          subPath: base.yaml
+      volumes:
+      - name: config-volume
+        configMap:
+          name: orchestrator-config

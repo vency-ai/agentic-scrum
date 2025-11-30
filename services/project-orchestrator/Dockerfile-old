@@ -1,0 +1,42 @@
+# Use the official Python image as the base image
+FROM python:3.10-slim-buster
+
+
+# Set the working directory in the container
+#WORKDIR /app/src
+WORKDIR /app
+
+# Copy the requirements file first to leverage Docker cache
+COPY src/requirements.txt .
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy all application source code directly into the working directory
+COPY src/ ./src
+
+#COPY src/app.py .
+#COPY src/circuit_breaker.py .
+#COPY src/config.py .
+#COPY src/cronjob_generator.py .
+#COPY src/dependencies.py .
+#COPY src/enhanced_decision_engine.py .
+#COPY src/intelligence_router.py .
+#COPY src/k8s_client.py .
+#COPY src/log_config.py .
+#COPY src/models.py .
+#COPY src/project_analyzer.py .
+#COPY src/run_dailyscrum.py .
+#COPY src/service_clients.py .
+#COPY src/intelligence/ intelligence/
+#COPY src/templates/ templates/
+RUN ls -l /app/src
+
+# Copy config file
+COPY config/base.yaml ./src/config/base.yaml
+
+# Expose the port the application runs on
+EXPOSE 80
+
+# Command to run the application
+CMD ["python", "-m", "uvicorn", "src.app:app", "--host", "0.0.0.0", "--port", "80"]

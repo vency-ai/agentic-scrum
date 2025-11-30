@@ -1,0 +1,76 @@
+apiVersion: v1
+data:
+  api-config.yaml: |+
+    projects:
+      logs:
+        log_filename: "/app/logs/api-projects.log"
+        file_log_level: "INFO"
+        console_log_level: "DEBUG"
+        backupCount: 7
+      app_version: "1.0.0"
+      app_name: "ProjectDataGenerator"
+      working_folder: "/app"
+    teams:
+      logs:
+        log_filename: "/app/logs/teams.log"
+        file_log_level: "INFO"
+        console_log_level: "DEBUG"
+        backupCount: 7
+      app_version: "1.0.0"
+      app_name: "TeamDataGenerator"
+      working_folder: "/app"
+    designation:
+      logs:
+        log_filename: "/app/logs/designation.log"
+        file_log_level: "INFO"
+        console_log_level: "DEBUG"
+        backupCount: 7
+      app_version: "1.0.0"
+      app_name: "designationDataGenerator"
+      working_folder: "/app"
+    role-designation-mapping:
+      logs:
+        log_filename: "/app/logs/role-designation-mapping.log"
+        file_log_level: "INFO"
+        console_log_level: "DEBUG"
+        backupCount: 7
+      app_version: "1.0.0"
+      app_name: "role-designation-mapping-DataGenerator"
+      working_folder: "/app"
+
+    team-designation-mapping:
+      logs:
+        log_filename: "/app/logs/team-designation-mapping.log"
+        file_log_level: "INFO"
+        console_log_level: "DEBUG"
+        backupCount: 7
+      app_version: "1.0.0"
+      app_name: "team-designation-mapping-DataGenerator"
+      working_folder: "/app"
+
+    team-role-mapping:
+      logs:
+        log_filename: "/app/logs/team-role-mapping.log"
+        file_log_level: "INFO"
+        console_log_level: "DEBUG"
+        backupCount: 7
+      app_version: "1.0.0"
+      app_name: "team-role-mapping-DataGenerator"
+      working_folder: "/app"
+
+
+    tasks:
+      logs:
+        log_filename: "/app/logs/tasks.log"
+        file_log_level: "INFO"
+        console_log_level: "DEBUG"
+        backupCount: 7
+      app_version: "1.0.0"
+      app_name: "tasks-DataGenerator"
+      working_folder: "/app"
+
+kind: ConfigMap
+metadata:
+  creationTimestamp: null
+  name: api-config
+  namespace: dsm

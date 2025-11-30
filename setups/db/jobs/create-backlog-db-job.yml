@@ -1,0 +1,21 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: create-backlog-db
+  namespace: dsm
+spec:
+  template:
+    spec:
+      containers:
+      - name: create-db-container
+        image: postgres:13
+        command: ["/bin/bash", "-c"]
+        args:
+          - |
+            PGPASSWORD="${POSTGRES_PASSWORD}" psql -h ${POSTGRES_HOST} -U ${POSTGRES_USER} -d postgres -c "CREATE DATABASE backlog_db;"
+        envFrom:
+        - secretRef:
+            name: backlog-db-secret
+        - configMapRef:
+            name: backlog-db-config
+      restartPolicy: OnFailure

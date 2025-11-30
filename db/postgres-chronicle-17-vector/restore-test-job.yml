@@ -1,0 +1,56 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: restore-test-job
+  namespace: dsm
+spec:
+  template:
+    spec:
+      containers:
+      - name: restore-test
+        image: postgres:17.6-alpine
+        command: ["/bin/sh", "-c"]
+        args:
+          - |
+            set -e
+            export PGPASSWORD=dsm_password
+            PG_HOST="chronicle-db"
+            PG_USER="chronicle_user"
+            BACKUP_DIR="/backup"
+            RESTORE_DB="agent_memory_restore_test"
+
+            echo "Creating restore test database..."
+            psql -h $PG_HOST -U $PG_USER -d chronicle_db -c "DROP DATABASE IF EXISTS $RESTORE_DB;"
+            psql -h $PG_HOST -U $PG_USER -d chronicle_db -c "CREATE DATABASE $RESTORE_DB;"
+
+            echo "Finding latest agent_memory backup file..."
+            BACKUP_FILE=$(ls -t $BACKUP_DIR/agent_memory_dump-*.sql | head -n 1)
+            if [ -z "$BACKUP_FILE" ]; then
+              echo "Error: No agent_memory backup file found in $BACKUP_DIR"
+              exit 1
+            fi
+            echo "Found backup file: $BACKUP_FILE"
+
+            echo "Restoring backup to $RESTORE_DB..."
+            psql -h $PG_HOST -U $PG_USER -d $RESTORE_DB -f $BACKUP_FILE
+
+            echo "Verifying data integrity..."
+            RESTORED_COUNT=$(psql -h $PG_HOST -U $PG_USER -d $RESTORE_DB -t -c "SELECT COUNT(*) FROM agent_episodes;")
+            echo "Restored agent_episodes count: $RESTORED_COUNT"
+            if [ "$(echo $RESTORED_COUNT | xargs)" -ne "1003" ]; then
+              echo "Error: Restored count ($RESTORED_COUNT) does not match expected count (1003)"
+              exit 1
+            fi
+
+            echo "Cleaning up restore test database..."
+            psql -h $PG_HOST -U $PG_USER -d chronicle_db -c "DROP DATABASE $RESTORE_DB;"
+            echo "Restore test completed successfully."
+        volumeMounts:
+        - name: backup-storage
+          mountPath: /backup
+      volumes:
+      - name: backup-storage
+        persistentVolumeClaim:
+          claimName: backup-pvc
+      restartPolicy: OnFailure
+  backoffLimit: 4

@@ -1,0 +1,29 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: orchestration-workflow
+  namespace: dsm
+spec:
+  schedule: "30 8 * * *" # Daily at 8:30 AM CST
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: orchestration-workflow-sa
+          containers:
+          - name: orchestration-workflow-runner
+            image: bitnami/kubectl:latest
+            command: ["/bin/sh", "-c"]
+            args: ["/scripts/orchestration_workflow.sh"]
+            volumeMounts:
+            - name: script-volume
+              mountPath: /scripts
+          volumes:
+          - name: script-volume
+            configMap:
+              name: orchestration-workflow-scripts
+              defaultMode: 0755
+          restartPolicy: OnFailure

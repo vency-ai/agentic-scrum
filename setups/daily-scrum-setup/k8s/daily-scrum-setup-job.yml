@@ -1,0 +1,42 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: daily-scrum-setup-job
+  namespace: dsm
+spec:
+  template:
+    spec:
+      serviceAccountName: default
+      containers:
+      - name: daily-scrum-setup
+        image: python:3.10
+        command: ["/bin/sh", "-c", "pip install -r /app/requirements.txt && python /app/app.py"]
+        envFrom:
+        - secretRef:
+            name: postgres-sprint-secret # Daily scrum updates are stored in sprint-db
+        env:
+        - name: PROJECT_SERVICE_URL
+          value: "http://project-service:80"
+        - name: SPRINT_SERVICE_URL
+          value: "http://sprint-service:80"
+        - name: BACKLOG_SERVICE_URL
+          value: "http://backlog-service:8080"
+        - name: TEST_PROJECT_ID
+          value: "TEST-001"
+        - name: TEST_SPRINT_ID
+          value: "SPRINT-001"
+        volumeMounts:
+        - name: app-code
+          mountPath: /app/app.py
+          subPath: app.py
+        - name: app-requirements
+          mountPath: /app/requirements.txt
+          subPath: requirements.txt
+      restartPolicy: Never
+      volumes:
+      - name: app-code
+        configMap:
+          name: daily-scrum-setup-code-cm
+      - name: app-requirements
+        configMap:
+          name: daily-scrum-setup-requirements-cm

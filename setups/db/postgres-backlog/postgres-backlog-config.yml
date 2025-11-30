@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backlog-db-config
+  namespace: dsm
+data:
+  POSTGRES_DB: backlog_db
+  POSTGRES_USER: dsm_user
+  POSTGRES_HOST: backlog-db

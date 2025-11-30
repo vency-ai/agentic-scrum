@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: debug-curl-pod
+  namespace: dsm
+spec:
+  containers:
+  - name: debug-curl-container
+    image: curlimages/curl:latest # A lightweight image with curl
+    command: ["sleep", "3600"] # Keep the pod running for an hour
+    imagePullPolicy: IfNotPresent
+  restartPolicy: Always

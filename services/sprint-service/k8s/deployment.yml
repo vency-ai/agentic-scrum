@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sprint-service
+  namespace: dsm
+  labels:
+    app: sprint-service
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: sprint-service
+  template:
+    metadata:
+      labels:
+        app: sprint-service
+    spec:
+      containers:
+      - name: sprint-service
+        image: myreg.agile-corp.org:5000/sprint-service:1.0.7
+        imagePullPolicy: Always
+
+        ports:
+        - containerPort: 80
+        startupProbe:
+          httpGet:
+            path: /health/ready
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          failureThreshold: 12 # 1 minute (12 * 5 seconds)
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 80
+          initialDelaySeconds: 15
+          periodSeconds: 10
+        resources:
+          requests:
+            memory: "200Mi"
+            cpu: "200m"
+          limits:
+            memory: "400Mi"
+            cpu: "400m"
+        envFrom:
+        - secretRef:
+            name: sprint-db-secret
+        - configMapRef:
+            name: sprint-db-config
+        env:
+        - name: MAX_TASKS_PER_SPRINT
+          value: "8"
+        - name: POSTGRES_HOST
+          value: "sprint-db"
+        - name: POSTGRES_DB
+          value: "sprint_db"
+        - name: POSTGRES_USER
+          value: "dsm_user"
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: sprint-db-secret
+              key: POSTGRES_PASSWORD
+        - name: PROJECT_SERVICE_URL
+          value: "http://project-service:80"
+        - name: BACKLOG_SERVICE_URL
+          value: "http://backlog-service:80"
+        - name: CHRONICLE_SERVICE_URL
+          value: "http://chronicle-service.dsm.svc.cluster.local:80"
+        - name: REDIS_HOST
+          value: "redis"
+        - name: REDIS_PORT
+          value: "6379"
+        - name: LOG_LEVEL
+          value: info
+      imagePullSecrets:
+      - name: agile-corp-reg-secret

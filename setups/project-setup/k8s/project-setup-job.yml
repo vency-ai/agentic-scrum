@@ -1,0 +1,40 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: project-setup-job
+  namespace: dsm
+spec:
+  template:
+    spec:
+      serviceAccountName: default
+      containers:
+      - name: project-setup
+        image: python:3.10
+        command: ["/bin/sh", "-c", "pip install -r /app/requirements.txt && python /app/app.py"]
+        envFrom:
+        - secretRef:
+            name: project-db-secret
+        - configMapRef:
+            name: project-db-config
+        volumeMounts:
+        - name: app-code
+          mountPath: /app/app.py
+          subPath: app.py
+        - name: requirements
+          mountPath: /app/requirements.txt
+          subPath: requirements.txt
+        - name: holidays-data
+          mountPath: /app/us-holiday.json
+          subPath: us-holiday.json
+      restartPolicy: Never
+      volumes:
+      - name: app-code
+        configMap:
+          name: project-setup-cm
+      - name: requirements
+        configMap:
+          name: project-setup-requirements-cm
+      - name: holidays-data
+        configMap:
+          name: project-setup-holidays-cm
+  backoffLimit: 4

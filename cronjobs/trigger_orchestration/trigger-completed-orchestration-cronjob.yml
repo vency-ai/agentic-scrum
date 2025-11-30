@@ -1,0 +1,29 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: trigger-completed-orchestration
+  namespace: dsm
+spec:
+  schedule: "0 9 * * *" # Daily at 9:00 AM CST
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: completed-orchestration-trigger-sa
+          containers:
+          - name: completed-orchestration-trigger
+            image: bitnami/kubectl:latest
+            command: ["/bin/sh", "-c"]
+            args: ["/scripts/trigger_completed_orchestration.sh"]
+            volumeMounts:
+            - name: script-volume
+              mountPath: /scripts
+          volumes:
+          - name: script-volume
+            configMap:
+              name: trigger-completed-orchestration-script
+              defaultMode: 0755
+          restartPolicy: OnFailure

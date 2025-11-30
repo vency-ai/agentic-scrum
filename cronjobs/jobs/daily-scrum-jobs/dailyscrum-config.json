@@ -1,0 +1,5 @@
+{
+  "PROJECT_SERVICE_URL": "http://project-service.dsm.svc.cluster.local",
+  "SPRINT_SERVICE_URL": "http://sprint-service.dsm.svc.cluster.local",
+  "CHRONICLE_SERVICE_URL": "http://chronicle-service.dsm.svc.cluster.local"
+}

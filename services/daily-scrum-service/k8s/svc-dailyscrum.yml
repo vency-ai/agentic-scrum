@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Service
+metadata:
+  creationTimestamp: null
+  labels:
+    app: dailyscrum
+  name: dailyscrum
+  namespace: dsm
+    
+spec:
+  ports:
+  - name: 80-8080
+    port: 80
+    protocol: TCP
+    targetPort: 8080
+  selector:
+    app: dailyscrum
+  type: ClusterIP
+status:
+  loadBalancer: {}

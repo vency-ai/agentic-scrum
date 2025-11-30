@@ -1,0 +1,78 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: pattern-analyzer-integration-tests
+  namespace: dsm
+  labels:
+    app: project-orchestrator
+    component: tests
+    test-suite: integration
+spec:
+  activeDeadlineSeconds: 300  # 5 minutes timeout
+  backoffLimit: 1
+  template:
+    metadata:
+      labels:
+        app: project-orchestrator
+        component: tests
+        test-suite: integration
+    spec:
+      imagePullSecrets:
+      - name: agile-corp-reg-secret
+      restartPolicy: Never
+      containers:
+      - name: test-runner
+        image: myreg.agile-corp.org:5000/project-orchestrator-tests:1.0.5
+        imagePullPolicy: Always
+        command:
+        - python
+        - -c
+        - |
+          import sys
+          sys.path.insert(0, '/app/src')
+          
+          # Test Episode Pattern Analyzer integration with Memory Bridge
+          print("=== Testing Episode Pattern Analyzer Integration ===")
+          
+          try:
+              from analytics.episode_pattern_analyzer import EpisodePatternAnalyzer
+              from services.memory_bridge import MemoryBridge
+              print("✓ Imports successful")
+              
+              # Test Memory Bridge initialization with Pattern Analyzer
+              memory_bridge = MemoryBridge()
+              print(f"✓ Memory Bridge initialized with Pattern Analyzer: {type(memory_bridge.pattern_analyzer)}")
+              
+              # Test Pattern Analyzer standalone
+              analyzer = EpisodePatternAnalyzer()
+              print(f"✓ Pattern Analyzer standalone initialization: {type(analyzer)}")
+              
+              # Test that analyzer has expected methods
+              expected_methods = ['analyze_patterns', 'calculate_pattern_confidence', 'filter_significant_patterns']
+              for method in expected_methods:
+                  if hasattr(analyzer, method):
+                      print(f"✓ Pattern Analyzer has {method} method")
+                  else:
+                      print(f"✗ Pattern Analyzer missing {method} method")
+                      sys.exit(1)
+              
+              print("\n=== Integration Test PASSED ===")
+              print("Phase 2: Episode Pattern Analyzer - COMPLETED")
+              
+          except Exception as e:
+              print(f"✗ Integration test failed: {e}")
+              import traceback
+              traceback.print_exc()
+              sys.exit(1)
+        env:
+        - name: PYTHONPATH
+          value: "/app/src"
+        - name: LOG_LEVEL
+          value: "debug"
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"

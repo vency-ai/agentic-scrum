@@ -1,0 +1,160 @@
+apiVersion: v1
+data:
+  utils.py: |
+    import logging
+    import logging.handlers
+    import os
+    import psycopg2
+    import structlog
+    import yaml
+    import json
+    from pathlib import Path
+
+
+    class TimedRotatingFileHandlerWithCompression(logging.handlers.TimedRotatingFileHandler):
+        """
+        Custom log handler to compress old log files.
+        """
+        def doRollover(self):
+            super().doRollover()
+            if self.backupCount > 0:
+                for s in self.getFilesToDelete():
+                    with open(s, 'rb') as f_in, gzip.open(f'{s}.gz', 'wb') as f_out:
+                        f_out.writelines(f_in)
+                    Path(s).unlink()
+
+
+    def load_yaml_config(file_path):
+        """
+        Load a YAML configuration file.
+        :param file_path: Path to the YAML file.
+        :return: Dictionary of configuration.
+        """
+        try:
+            with open(file_path, 'r') as f:
+                return yaml.safe_load(f)
+        except yaml.YAMLError as e:
+            logging.error(f"Failed to load YAML configuration: {e}")
+            raise
+        except FileNotFoundError as e:
+            logging.error(f"YAML configuration file not found: {e}")
+            raise
+
+
+    def load_json_config(file_path):
+        """
+        Load a JSON configuration file.
+        :param file_path: Path to the JSON file.
+        :return: Dictionary of configuration.
+        """
+        try:
+            with open(file_path, 'r') as f:
+                return json.load(f)
+        except json.JSONDecodeError as e:
+            logging.error(f"Failed to load JSON configuration: {e}")
+            raise
+        except FileNotFoundError as e:
+            logging.error(f"JSON configuration file not found: {e}")
+            raise
+
+
+    def configure_structlog(app_name, app_version):
+        """
+        Configure Structlog for structured logging.
+
+        Parameters:
+        - app_name (str): The name of the application.
+        - app_version (str): The version of the application.
+        """
+        def inject_app_info(logger, method_name, event_dict):
+            """Inject app_name and app_version into log records."""
+            event_dict["app_name"] = app_name
+            event_dict["app_version"] = app_version
+            return event_dict
+
+        def reorder_event_dict(logger, method_name, event_dict):
+            """Reorder keys to ensure timestamp, level, and event are first."""
+            ordered = {
+                "timestamp": event_dict.pop("timestamp", None),
+                "level": event_dict.pop("level", None),
+                "event": event_dict.pop("event", None),
+            }
+            ordered.update(event_dict)
+            return ordered
+
+        # Structlog configuration
+        structlog.configure(
+            processors=[
+                structlog.stdlib.filter_by_level,
+                structlog.stdlib.add_logger_name,
+                structlog.stdlib.add_log_level,
+                structlog.processors.TimeStamper(fmt="iso", key="timestamp"),
+                inject_app_info,
+                reorder_event_dict,
+                structlog.processors.JSONRenderer(),  # Use JSON rendering for logs
+            ],
+            context_class=dict,
+            logger_factory=structlog.stdlib.LoggerFactory(),
+            wrapper_class=structlog.stdlib.BoundLogger,
+            cache_logger_on_first_use=True,
+        )
+
+        # Python logging configuration with Structlog's ProcessorFormatter
+        logging.basicConfig(
+            format="%(message)s",
+            handlers=[
+                logging.StreamHandler(),
+            ],
+            level=logging.DEBUG,
+        )
+        logging.getLogger().handlers[0].setFormatter(
+            structlog.stdlib.ProcessorFormatter(
+                processor=structlog.processors.JSONRenderer(),
+                foreign_pre_chain=[
+                    structlog.processors.TimeStamper(fmt="iso", key="timestamp"),
+                    inject_app_info,
+                    reorder_event_dict,
+                ],
+            )
+        )
+
+
+    def get_db_connection():
+        """
+        Establish a connection to the PostgreSQL database.
+        """
+        try:
+            conn = psycopg2.connect(
+                host=os.environ.get("POSTGRES_HOST"),
+                port=os.environ.get("POSTGRES_PORT"),
+                user=os.environ.get("POSTGRES_USER"),
+                password=os.environ.get("POSTGRES_PASSWORD"),
+                dbname=os.environ.get("POSTGRES_DB"),
+            )
+            return conn
+        except psycopg2.Error as e:
+            logging.error(f"Failed to connect to PostgreSQL database: {e}")
+            raise
+
+
+    def setup_logging_from_yaml(yaml_path, app_name, app_version):
+        """
+        Setup logging configuration from a YAML file.
+
+        Parameters:
+        - yaml_path: Path to the YAML configuration file.
+        - app_name: Application name for log injection.
+        - app_version: Application version for log injection.
+        """
+        config = load_yaml_config(yaml_path)
+        log_filename = config.get("handlers", {}).get("file", {}).get("filename", "${LOG_FILENAME}")
+        resolved_filename = log_filename.replace("${LOG_FILENAME}", f"{app_name}.log")
+        config["handlers"]["file"]["filename"] = resolved_filename
+
+        logging.config.dictConfig(config)
+        configure_structlog(app_name, app_version)
+kind: ConfigMap
+metadata:
+  creationTimestamp: null
+  name: api-utils
+  namespace: dsm

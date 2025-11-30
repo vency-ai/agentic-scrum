@@ -1,0 +1,24 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: trigger-completed-orchestration-manual-test
+  namespace: dsm
+spec:
+  template:
+    spec:
+      serviceAccountName: completed-orchestration-trigger-sa
+      containers:
+      - name: completed-orchestration-trigger
+        image: bitnami/kubectl:latest
+        command: ["/bin/sh", "-c"]
+        args: ["/scripts/trigger_completed_orchestration.sh"]
+        volumeMounts:
+        - name: script-volume
+          mountPath: /scripts
+      volumes:
+      - name: script-volume
+        configMap:
+          name: trigger-completed-orchestration-script
+          defaultMode: 0755
+      restartPolicy: OnFailure
+  backoffLimit: 0

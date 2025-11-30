@@ -1,0 +1,10 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: sprint-service-pdb
+  namespace: dsm
+spec:
+  minAvailable: 1 # Ensures at least 1 pod is available
+  selector:
+    matchLabels:
+      app: sprint-service # Matches the 'app' label of the sprint-service deployment

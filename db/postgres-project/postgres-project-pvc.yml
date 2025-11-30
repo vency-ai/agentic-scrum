@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: project-db-pv-data
+  namespace: dsm
+  labels: {"appid":"project-db", "env":"dev", "app-svc":"project-db"}
+spec:
+  storageClassName: nfs-client
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  nfs:
+    path: /nfs/k8s/gt/project-db-data
+    server: 10.204.32.7
+    readOnly: false
+  claimRef:
+    name: project-db-pvc
+    namespace: dsm
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: project-db-pvc
+  namespace: dsm
+spec:
+  storageClassName: nfs-client
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi

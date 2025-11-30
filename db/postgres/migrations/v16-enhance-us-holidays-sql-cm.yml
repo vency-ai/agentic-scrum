@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: v16-enhance-us-holidays-sql-cm
+  namespace: dsm
+data:
+  V16__enhance_us_holidays_table.sql: |
+    ALTER TABLE us_holidays ADD COLUMN type VARCHAR(50);

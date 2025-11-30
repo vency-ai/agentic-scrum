@@ -1,0 +1,79 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: manual-dailyscrum-newproj02-newproj02-s01
+  namespace: dsm
+  labels:
+    cronjob: run-dailyscrum-newproj02-newproj02-s01
+    project: NEWPROJ02
+    sprint: NEWPROJ02-S01
+    manual: "true"
+spec:
+  backoffLimit: 4
+  template:
+    metadata:
+      labels:
+        app: dailyscrum-run
+        cronjob: run-dailyscrum-newproj02-newproj02-s01
+        env: production
+        project: NEWPROJ02
+        sprint: NEWPROJ02-S01
+    spec:
+      containers:
+      - command:
+        - /bin/sh
+        - -c
+        - |-
+              apt-get update -y
+              apt-get install -y curl # Explicitly install curl
+
+              until [ "$(curl -s -o /dev/null -w "%{http_code}" curl http://sprint-service.dsm.svc.cluster.local/health;)" = "200" ]; do
+                echo 'Waiting for dependency...'
+                sleep 5
+              done
+              echo 'Starting job'
+
+              apt-get install -y tree
+
+              pip3 install pandas Flask requests
+
+              tree /app
+
+              env
+
+              python3 /app/run_dailyscrum.py
+        env:
+        - name: PROJECT_ID
+          value: NEWPROJ02
+        - name: SPRINT_ID
+          value: NEWPROJ02-S01
+        image: python:3.10
+        imagePullPolicy: IfNotPresent
+        name: run-dailyscrum
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /app/run_dailyscrum.py
+          name: projects-code-volume
+          subPath: run_dailyscrum.py
+        - mountPath: /app/config/dailyscrum-config.json
+          name: projects-config-volume
+          subPath: dailyscrum-config.json
+      dnsPolicy: ClusterFirst
+      restartPolicy: Never
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - emptyDir:
+          sizeLimit: 500Mi
+        name: cache-volume
+      - configMap:
+          defaultMode: 420
+          name: run-dailyscrum
+        name: projects-code-volume
+      - configMap:
+          defaultMode: 420
+          name: dailyscrum-config
+        name: projects-config-volume

@@ -1,0 +1,39 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: create-backlog-additional-tables-job
+  namespace: dsm
+spec:
+  template:
+    spec:
+      containers:
+      - name: create-tables
+        image: postgres:13
+        command: ["/bin/bash", "-c"]
+        args: 
+          - "psql -h backlog-db -U ${PGUSER} -d ${PGDATABASE} -f /etc/sql/create_backlog_additional_tables.sql"
+        env:
+        - name: PGPASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: backlog-db-secret
+              key: POSTGRES_PASSWORD
+        - name: PGUSER
+          valueFrom:
+            configMapKeyRef:
+              name: backlog-db-config
+              key: POSTGRES_USER
+        - name: PGDATABASE
+          valueFrom:
+            configMapKeyRef:
+              name: backlog-db-config
+              key: POSTGRES_DB
+        volumeMounts:
+        - name: sql-script
+          mountPath: /etc/sql
+      volumes:
+      - name: sql-script
+        configMap:
+          name: backlog-additional-tables-sql-configmap
+      restartPolicy: OnFailure
+  backoffLimit: 4

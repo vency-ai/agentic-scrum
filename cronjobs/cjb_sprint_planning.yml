@@ -1,0 +1,25 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: sprint-planning-job
+  namespace: dsm
+spec:
+  template:
+    spec:
+      containers:
+      - name: sprint-planning-container
+        image: curlimages/curl:latest
+        command: ["/bin/sh", "-c"]
+        args:
+          - |
+            PROJECT_ID=${PROJECT_ID:-TEST-001}
+            echo "Initiating Sprint Planning for Project ID: $PROJECT_ID"
+            curl -X POST -H "Content-Type: application/json" -d '{
+                "sprint_name": "Automated Sprint for '$PROJECT_ID'",
+                "duration_weeks": 2
+            }' http://sprint-service.dsm.svc.cluster.local/sprints/$PROJECT_ID
+        env:
+        - name: PROJECT_ID
+          value: "TEST-001"
+      restartPolicy: Never
+  backoffLimit: 4

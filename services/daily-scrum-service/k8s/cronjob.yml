@@ -1,0 +1,49 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: run-daily-scrum
+  namespace: dsm
+spec:
+#  schedule: "*/1 * * * *" # Runs every minute for testing
+#  schedule: "0 13,23 * * *"  # 8 AM and 6 PM CDT (UTC-5)
+  schedule: "0 14,0 * * *"  # 8 AM and 6 PM CST (UTC-6)
+
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: daily-scrum-runner
+            image: curlimages/curl:latest
+            command: ["/bin/sh", "-c"]
+            args:
+            - |
+
+              until curl -s -f curl http://sprint-service.dsm.svc.cluster.local/health; do
+                echo 'Waiting for dependency...'
+                sleep 5
+              done
+              echo 'Starting job'
+
+              # Find an active sprint to run the scrum for.
+              # This now uses the new /sprints/active endpoint from the sprint-service.
+              # Using awk for robust JSON parsing.
+              HTTP_STATUS=$(curl -s -o /tmp/sprint_response.json -w "%{http_code}" http://sprint-service.dsm.svc.cluster.local/sprints/active)
+              SPRINT_ID=""
+
+              if [ "$HTTP_STATUS" -eq 200 ]; then
+                SPRINT_ID=$(cat /tmp/sprint_response.json | awk -F'"' '{print $4}')
+              fi
+              
+              if [ -z "$SPRINT_ID" ]; then
+                echo "No active sprint found."
+                exit 0
+              fi
+              
+
+              echo "--- Triggering Sprint Service for Daily Scrum Simulation & Reporting ---"
+              curl -X POST -f "http://sprint-service.dsm.svc.cluster.local/sprints/${SPRINT_ID}/run-daily-scrum"
+              echo "--- Daily Scrum Process Triggered Successfully in Sprint Service ---"
+              echo "Running daily scrum for sprint: $SPRINT_ID"
+              # curl -X POST http://daily-scrum-service.dsm.svc.cluster.local/scrums/$SPRINT_ID/run
+          restartPolicy: OnFailure

@@ -1,0 +1,39 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: create-retrospective-tables-job
+  namespace: dsm
+spec:
+  template:
+    spec:
+      containers:
+      - name: create-tables
+        image: postgres:13
+        command: ["/bin/bash", "-c"]
+        args:
+          - "psql -h chronicle-db -U ${PGUSER} -d ${PGDATABASE} -f /etc/sql/create_retrospective_tables.sql"
+        env:
+        - name: PGPASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: chronicle-db-secret
+              key: POSTGRES_PASSWORD
+        - name: PGUSER
+          valueFrom:
+            configMapKeyRef:
+              name: postgres-chronicle-config
+              key: POSTGRES_USER
+        - name: PGDATABASE
+          valueFrom:
+            configMapKeyRef:
+              name: postgres-chronicle-config
+              key: POSTGRES_DB
+        volumeMounts:
+        - name: sql-script
+          mountPath: /etc/sql
+      volumes:
+      - name: sql-script
+        configMap:
+          name: chronicle-retrospective-sql-configmap
+      restartPolicy: OnFailure
+  backoffLimit: 4

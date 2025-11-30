@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pgbouncer-chronicle
+  namespace: dsm
+  labels:
+    app: pgbouncer-chronicle
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pgbouncer-chronicle
+  template:
+    metadata:
+      labels:
+        app: pgbouncer-chronicle
+    spec:
+      containers:
+        - name: pgbouncer
+          image: myreg.agile-corp.org:5000/pgbouncer-chronicle:1.19.0
+          ports:
+            - containerPort: 6432
+          volumeMounts:
+            - name: pgbouncer-config
+              mountPath: /etc/pgbouncer/pgbouncer.ini
+              subPath: pgbouncer.ini
+            - name: pgbouncer-userlist
+              mountPath: /etc/pgbouncer/userlist.txt
+              subPath: userlist.txt
+          env:
+            - name: PGBOUNCER_CONFIG_FILE
+              value: /etc/pgbouncer/pgbouncer.ini
+            - name: PGBOUNCER_USERLIST_FILE
+              value: /etc/pgbouncer/userlist.txt
+            - name: PGBOUNCER_LISTEN_PORT
+              value: "6432"
+            - name: PGBOUNCER_MAX_CLIENT_CONN
+              value: "200"
+            - name: PGBOUNCER_DEFAULT_POOL_SIZE
+              value: "25"
+            - name: PGBOUNCER_POOL_MODE
+              value: "transaction"
+      volumes:
+        - name: pgbouncer-config
+          configMap:
+            name: pgbouncer-chronicle-config
+        - name: pgbouncer-userlist
+          configMap:
+            name: pgbouncer-chronicle-userlist-config
+      imagePullSecrets:
+        - name: agile-corp-reg-secret
+      restartPolicy: Always

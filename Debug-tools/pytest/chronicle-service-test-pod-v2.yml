@@ -1,0 +1,50 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: chronicle-service-test-pod-v2
+  namespace: dsm
+spec:
+  restartPolicy: Never
+  containers:
+  - name: test-runner
+    image: python:3.9-slim-buster
+    command: ["/bin/bash", "-c"]
+    args:
+      - "pip install pytest httpx psycopg2-binary fastapi uvicorn structlog redis pytest-asyncio && \
+         mkdir -p /app/chronicle-service/src && \
+         mkdir -p /app/chronicle-service/tests && \
+         cp /etc/config/app.py /app/chronicle-service/src/app.py && \
+         cp /etc/config/event_consumer.py /app/chronicle-service/src/event_consumer.py && \
+         cp /etc/config/log_config.py /app/chronicle-service/src/log_config.py && \
+         cp /etc/config/utils.py /app/chronicle-service/src/utils.py && \
+         cp /etc/config/test_app.py /app/chronicle-service/tests/test_app.py && \
+         python3 -m pytest /app/chronicle-service/tests/test_app.py"
+    env:
+    - name: POSTGRES_HOST
+      value: chronicle-db
+    - name: POSTGRES_DB
+      valueFrom:
+        configMapKeyRef:
+          name: postgres-chronicle-config
+          key: POSTGRES_DB
+    - name: POSTGRES_USER
+      valueFrom:
+        configMapKeyRef:
+          name: postgres-chronicle-config
+          key: POSTGRES_USER
+    - name: POSTGRES_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: postgres-chronicle-secret
+          key: POSTGRES_PASSWORD
+    - name: REDIS_HOST
+      value: redis
+    - name: REDIS_PORT
+      value: "6379"
+    volumeMounts:
+    - name: test-config
+      mountPath: /etc/config
+  volumes:
+  - name: test-config
+    configMap:
+      name: chronicle-service-test-cm

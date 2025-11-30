@@ -1,0 +1,36 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: drop-daily-scrum-updates-job
+  namespace: dsm
+spec:
+  template:
+    spec:
+      containers:
+      - name: postgrest-db-job
+        image: postgres:13
+        env:
+        - name: PGPASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: sprint-db-secret
+              key: POSTGRES_PASSWORD
+        command:
+          - "psql"
+          - "-h"
+          - "sprint-db"
+          - "-U"
+          - "dsm_user"
+          - "-d"
+          - "sprint_db"
+          - "-f"
+          - "/docker-entrypoint-initdb.d/V14__drop_daily_scrum_updates_table.sql"
+        volumeMounts:
+        - name: sql-scripts
+          mountPath: /docker-entrypoint-initdb.d
+      volumes:
+      - name: sql-scripts
+        configMap:
+          name: drop-daily-scrum-updates-sql-configmap
+      restartPolicy: Never
+  backoffLimit: 4

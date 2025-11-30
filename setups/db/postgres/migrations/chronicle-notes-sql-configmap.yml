@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: chronicle-notes-sql-configmap
+  namespace: dsm
+data:
+  create_chronicle_notes_table.sql: |
+    DROP TABLE IF EXISTS chronicle_notes CASCADE;
+    CREATE TABLE chronicle_notes (
+        id VARCHAR(255) PRIMARY KEY,
+        event_type VARCHAR(255) NOT NULL,
+        project_id VARCHAR(255),
+        sprint_id VARCHAR(255),
+        note_content TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );

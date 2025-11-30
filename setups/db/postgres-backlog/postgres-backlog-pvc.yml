@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: backlog-db-pv-data
+  namespace: dsm
+  labels: {"appid":"backlog-db", "env":"dev", "app-svc":"backlog-db"}
+spec:
+  storageClassName: nfs-client
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  nfs:
+    path: /nfs/k8s/gt/backlog-db-data
+    server: 10.204.32.7
+    readOnly: false
+  claimRef:
+    name: backlog-db-pvc
+    namespace: dsm
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: backlog-db-pvc
+  namespace: dsm
+spec:
+  storageClassName: nfs-client
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi

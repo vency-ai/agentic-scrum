@@ -1,0 +1,37 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: alter-teams-project-assign-job
+  namespace: dsm
+spec:
+  template:
+    spec:
+      containers:
+      - name: psql-client
+        image: postgres:13 # Use a PostgreSQL client image
+        env:
+        - name: PGPASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: project-db-secret
+              key: POSTGRES_PASSWORD
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+          echo "Applying project_assign column type migration..."
+          psql -h project-db -U dsm_user -d project_db -f /sql-scripts/alter_teams_project_assign_column.sql
+          if [ $? -eq 0 ]; then
+            echo "project_assign column type migration applied successfully."
+          else
+            echo "project_assign column type migration FAILED."
+            exit 1
+          fi
+        volumeMounts:
+        - name: migration-script
+          mountPath: /sql-scripts
+      volumes:
+      - name: migration-script
+        configMap:
+          name: project-assign-boolean-migration-sql-configmap
+      restartPolicy: Never
+  backoffLimit: 4

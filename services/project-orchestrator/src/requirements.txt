@@ -1,0 +1,18 @@
+fastapi
+uvicorn
+requests
+kubernetes
+redis
+structlog
+PyYAML
+httpx
+jinja2
+numpy
+scipy
+scikit-learn # For cosine_similarity
+psutil
+pydantic
+asyncpg==0.29.0
+tenacity==8.2.3
+prometheus_client
+starlette_exporter

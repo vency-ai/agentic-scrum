@@ -1,0 +1,70 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: project-service
+  namespace: dsm
+  labels:
+    app: project-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: project-service
+  template:
+    metadata:
+      labels:
+        app: project-service
+    spec:
+      imagePullSecrets:
+      - name: agile-corp-reg-secret
+      containers:
+      - name: project-service
+        image: myreg.agile-corp.org:5000/project-service:1.0.0
+        imagePullPolicy: Always
+        command: ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "80"]
+        ports:
+        - containerPort: 80
+        startupProbe:
+          httpGet:
+            path: /health/ready
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          failureThreshold: 12 # 1 minute (12 * 5 seconds)
+        readinessProbe:
+          httpGet:
+            path: /health/ready
+            port: 80
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 80
+          initialDelaySeconds: 15
+          periodSeconds: 10
+        resources:
+          requests:
+            memory: "200Mi"
+            cpu: "200m"
+          limits:
+            memory: "400Mi"
+            cpu: "400m"
+        envFrom:
+        - secretRef:
+            name: project-db-secret
+        - configMapRef:
+            name: project-db-config
+        env:
+        - name: REDIS_HOST
+          value: redis
+        - name: REDIS_PORT
+          value: "6379"
+        - name: REDIS_DB
+          value: "0"
+        - name: REDIS_PASSWORD
+          value: "" # Explicitly set to empty string as Redis does not require a password
+        - name: REDIS_LOG_LEVEL
+          value: "DEBUG"
+        - name: POSTGRES_HOST
+          value: project-db

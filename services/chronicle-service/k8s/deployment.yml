@@ -1,0 +1,69 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: chronicle-service
+  namespace: dsm
+  labels:
+    app: chronicle-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: chronicle-service
+  template:
+    metadata:
+      labels:
+        app: chronicle-service
+    spec:
+      imagePullSecrets:
+        - name: agile-corp-reg-secret
+      containers:
+      - name: chronicle-service
+        image: myreg.agile-corp.org:5000/chronicle-service:1.1.14
+        #imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
+        workingDir: /app
+        command: ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "80", "--log-level", "debug"]
+        ports:
+        - containerPort: 80
+        startupProbe:
+          httpGet:
+            path: /health/ready
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          failureThreshold: 12 # 1 minute (12 * 5 seconds)
+        readinessProbe:
+          httpGet:
+            path: /health/ready
+            port: 80
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 80
+          initialDelaySeconds: 15
+          periodSeconds: 10
+        resources:
+          requests:
+            memory: "200Mi"
+            cpu: "200m"
+          limits:
+            memory: "400Mi"
+            cpu: "400m"
+        envFrom:
+        - secretRef:
+            name: postgres-chronicle-secret
+        - configMapRef:
+            name: postgres-chronicle-config
+        env:
+        - name: REDIS_HOST
+          value: redis
+        - name: REDIS_PORT
+          value: "6379"
+        - name: REDIS_LOG_LEVEL
+          value: "DEBUG"
+        - name: LOG_LEVEL
+          value: "DEBUG"
+        

@@ -1,0 +1,4 @@
+{
+    "endpoint": "http://dailyscrum",
+    "route": "/run_daily_scrum"
+}

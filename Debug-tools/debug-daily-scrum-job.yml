@@ -1,0 +1,26 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: debug-daily-scrum-job
+  namespace: dsm
+spec:
+  template:
+    spec:
+      containers:
+      - name: debug-runner
+        image: curlimages/curl:latest
+        command: ["/bin/sh", "-c"]
+        args:
+          - |
+            echo "Attempting to get active sprint ID..."
+            RESPONSE=$(curl -s http://sprint-service.dsm.svc.cluster.local/sprints/active)
+            echo "Sprint Service Response: $RESPONSE"
+            SPRINT_ID=$(echo "$RESPONSE" | grep -o '"sprint_id": "[^"]*"' | cut -d':' -f2 | tr -d ' "')
+            echo "Extracted SPRINT_ID: $SPRINT_ID"
+            if [ -z "$SPRINT_ID" ]; then
+              echo "SPRINT_ID is empty. Exiting."
+              exit 1
+            fi
+            echo "SPRINT_ID successfully extracted: $SPRINT_ID"
+      restartPolicy: Never
+  backoffLimit: 0
