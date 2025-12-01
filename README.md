@@ -67,10 +67,15 @@ RESTful APIs for every service mean DSM can connect to external systems—fetch 
 
 ## Architecture at a Glance
 
+DSM is built as a set of microservices running on Kubernetes, with an AI “Scrum Master” orchestrator, a digital Scrum team of services, and an agent brain backed by PostgreSQL + pgvector and Redis Streams.
+
 ![Alt text for the SVG](docs/imgs/Readme_image3.png)
 
+For a deep dive into all diagrams (service dependencies, Kubernetes layout, agent brain, and flows), see:
+- [Architecture Overview](docs/DSM_Architecture_Overview.md) - Complete technical architecture
+- [Event Design](docs/DSM_Pragmatic_Event_Design_details.md) - Event-driven patterns
 
-
+- 
 ---
 
 ## Quick Start (30-Minute Setup)
